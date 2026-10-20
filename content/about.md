@@ -16,7 +16,7 @@ infrastructure, and most of that time with Linux.
 
 My career started in support. At Intel I tested Centrino wireless platforms and helped
 get native wireless drivers into the mainline Linux kernel. After that came Cisco
-network management, then HP-UX data centers at HP. In 2008 I joined Novell, which
+and HPE. In 2008 I joined Novell, which
 later became part of SUSE. I've been at SUSE ever since: support engineer and
 instructor in Prague and Spain, then technical strategist and sales engineer on the US
 East Coast, and today Domain Solution Architect for AI and cloud native infrastructure
@@ -24,7 +24,7 @@ across North and Latin America.
 
 Day to day, I design platforms that run virtual machines and containers side by side:
 Kubernetes, Rancher, RKE2, KubeVirt and Harvester, with NVIDIA vGPU, MIG and BlueField
-DPUs underneath. I also build reference architectures with hardware partners such as
+DPUs underneath. I also help build reference architectures with hardware partners such as
 Dell, HPE, Lenovo and Fujitsu.
 
 ## Why this blog
