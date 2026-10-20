@@ -4,6 +4,7 @@ date: 2026-10-14
 draft: false
 tags: ["harvester", "suse-virtualization", "postgresql", "dbaas", "wso2", "rancher"]
 summary: "WSO2's open-source DBaaS operator turns a Kubernetes object into a PostgreSQL VM on SUSE Virtualization, with TLS, credentials and monitoring wired up, in about 100 seconds. Here's a quick install, including how to build its image without Packer."
+images: ["og.jpg"]
 # canonicalURL: ""
 ---
 

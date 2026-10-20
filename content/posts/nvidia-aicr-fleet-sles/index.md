@@ -4,6 +4,7 @@ date: 2026-10-19
 draft: false
 tags: ["nvidia", "aicr", "fleet", "rancher", "sles", "rke2", "gpu", "gitops", "nvsentinel"]
 summary: "NVIDIA's AI Cluster Runtime 1.1 shipped today with two features I contributed: a Rancher Fleet deployer and SUSE Linux Enterprise Server support on RKE2. Here's what they do, plus the NVSentinel and GPU Operator fixes that landed alongside them."
+images: ["og.jpg"]
 # canonicalURL: ""
 ---
 

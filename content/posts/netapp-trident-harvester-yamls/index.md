@@ -4,6 +4,7 @@ date: 2026-10-13
 draft: false
 tags: ["harvester", "suse-virtualization", "netapp", "trident", "csi", "storage", "iscsi", "nvme-of", "nfs"]
 summary: "A copy-paste version of my Harvester knowledge base article on NetApp Trident: every manifest and command for NFS, iSCSI and NVMe/TCP backends, with as little prose as possible."
+images: ["og.jpg"]
 ---
 
 > **Short version.** This post keeps only the manifests and commands. For the full

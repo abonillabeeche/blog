@@ -4,6 +4,7 @@ date: 2026-10-17
 draft: false
 tags: ["harvester", "suse-virtualization", "kubevirt", "windows", "hyper-v", "performance"]
 summary: "Windows runs best when it knows it's virtualized. Since SUSE Virtualization 1.9, the Windows templates turn on Hyper-V enlightenments and virtio-blk, which removed periodic I/O stalls, cut a write-heavy phase by 24%, and kept older Windows from losing two-thirds of its random IOPS."
+images: ["og.jpg"]
 # canonicalURL: ""
 ---
 

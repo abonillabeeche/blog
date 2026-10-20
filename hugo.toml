@@ -11,6 +11,7 @@ buildFuture = false
 
 [params]
   author = "Alejandro Bonilla"
+  images = ["/images/og-default.jpg"]   # default share card (og:image)
   description = "Notes from a home lab: Kubernetes, GPUs, storage and local LLMs."
   defaultTheme = "auto"
   ShowReadingTime = true

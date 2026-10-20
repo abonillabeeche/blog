@@ -4,6 +4,7 @@ date: 2026-10-12
 draft: false
 tags: ["longhorn", "spdk", "rdma", "nvme-of", "kubernetes", "storage", "benchmark"]
 summary: "Two snapshots of Longhorn's SPDK-based v2 engine on the same three Ampere nodes: 1.12 with my RDMA patches, then 1.14 development builds with a newer SPDK. NVMe/TCP got about 7× lower write latency and now fills a 25 GbE link. RDMA still halves write latency."
+images: ["og.jpg"]
 # canonicalURL: ""
 ---
 

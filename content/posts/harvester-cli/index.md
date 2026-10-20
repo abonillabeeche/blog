@@ -4,6 +4,7 @@ date: 2026-10-18
 draft: false
 tags: ["harvester", "suse-virtualization", "cli", "kubevirt", "gitops", "open-source"]
 summary: "Harvester CLI is a kubectl-style tool for creating and managing VMs on SUSE Virtualization. After the original repository went quiet, I took over the project: three feature releases later, it supports 1.9, has an image catalog, prints GitOps-ready YAML, and installs with Homebrew."
+images: ["og.jpg"]
 # canonicalURL: ""
 ---
 
