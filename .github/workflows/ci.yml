@@ -53,6 +53,25 @@ jobs:
       - id: deployment
         uses: actions/deploy-pages@v4
 
+  apex:
+    # Rebuild 5glinux.com so its "Latest from the blog" list picks up new posts.
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    needs: deploy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger 5glinux.com rebuild
+        env:
+          TOKEN: ${{ secrets.APEX_DISPATCH_TOKEN }}
+        run: |
+          if [ -z "$TOKEN" ]; then echo "APEX_DISPATCH_TOKEN not set; skipping"; exit 0; fi
+          sleep 30   # let the Pages CDN serve the new feed first
+          code=$(curl -s -o /dev/null -w '%{http_code}' -X POST \
+            -H "Authorization: Bearer $TOKEN" -H "Accept: application/vnd.github+json" \
+            https://api.github.com/repos/abonillabeeche/5glinux-site/dispatches \
+            -d '{"event_type":"blog-published"}')
+          echo "repository_dispatch HTTP $code"
+          [ "$code" = 204 ]
+
   indexnow:
     # Tell Bing, Yandex and other IndexNow engines which URLs exist, right after a deploy.
     if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
