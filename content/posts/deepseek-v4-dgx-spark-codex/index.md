@@ -1,7 +1,7 @@
 ---
 title: "Running DeepSeek V4 Flash on two DGX Sparks with Kubernetes and Codex CLI"
 date: 2026-10-19
-draft: true
+draft: false
 tags: ["dgx-spark", "vllm", "deepseek", "kubernetes", "codex", "local-llm", "rdma"]
 summary: "DeepSeek V4 Flash needs more memory than one DGX Spark has. This guide splits it across two Sparks with vLLM tensor parallelism over RoCE, reaches 51 tokens per second, and connects OpenAI's Codex CLI as a fully local coding agent."
 # canonicalURL: ""

@@ -1,7 +1,7 @@
 ---
 title: "VDI on SUSE Virtualization: Kasm Workspaces with autoscaling Harvester VMs"
 date: 2026-10-07
-draft: true
+draft: false
 tags: ["kasm", "vdi", "harvester", "suse-virtualization", "kubevirt", "windows"]
 summary: "Kasm Workspaces 1.19 has a built-in Harvester provider: it creates agent VMs on demand, streams desktops to the browser, and deletes the VMs when they sit idle. Here's a working setup on SUSE Virtualization v1.9, including Windows desktops, and five upstream bugs to work around."
 # canonicalURL: ""

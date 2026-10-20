@@ -1,7 +1,7 @@
 ---
 title: "Managed PostgreSQL on SUSE Virtualization with WSO2's DBaaS operator"
 date: 2026-10-14
-draft: true
+draft: false
 tags: ["harvester", "suse-virtualization", "postgresql", "dbaas", "wso2", "rancher"]
 summary: "WSO2's open-source DBaaS operator turns a Kubernetes object into a PostgreSQL VM on SUSE Virtualization, with TLS, credentials and monitoring wired up, in about 100 seconds. Here's a quick install, including how to build its image without Packer."
 # canonicalURL: ""
@@ -52,9 +52,6 @@ spec:
         - --databaseDefaults.osVersion=24.04
         - --databaseDefaults.storageClass=ceph-rbd
 ```
-
-> 📸 **Screenshot 1** (`harvester-dbaas-addon.png`): the `dbaas-operator` add-on in the
-> SUSE Virtualization UI under **Advanced → Add-ons**, enabled.
 
 ## Step 2: Build the PostgreSQL image without Packer
 
@@ -120,9 +117,6 @@ kubectl get dbinstances
 # dbaas-test-01   available   db.t3.micro
 ```
 
-> 📸 **Screenshot 2** (`harvester-dbaas-vm.png`): the `pg-dbaas-test-01` VM running in
-> the SUSE Virtualization UI.
-
 Next to the instance, the operator creates two Secrets:
 
 - `pg-<name>-credentials`, with `admin_user` and `admin_password`.
@@ -171,10 +165,17 @@ spec:
 
 After that, the extension appears under **Installed**.
 
-> 📸 **Screenshot 3** (`rancher-dbaas-extension.png`): the Databases page from the UI
-> extension in Rancher, listing the instances.
+With the extension installed, Rancher gains a **DBaaS** entry under Global Apps. From
+there you can create and manage databases on any downstream SUSE Virtualization cluster
+that runs the operator, without switching to each cluster's own UI:
 
-> 📸 **Screenshot 4** (`rancher-dbaas-create.png`): the create-database form in Rancher.
+![Rancher's Global Apps menu with the DBaaS extension highlighted](rancher-dbaas-menu.jpg#portrait)
+
+Its **Database Instances** page lists every instance with its state, engine, class,
+storage, image freshness and endpoint, plus pages for snapshots, restores and database
+images:
+
+![Database Instances page in Rancher listing two available PostgreSQL instances](rancher-dbaas-instances.jpg)
 
 ## Limitations in 0.1.0
 
