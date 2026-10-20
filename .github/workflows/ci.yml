@@ -32,7 +32,7 @@ jobs:
       - name: Links
         uses: lycheeverse/lychee-action@v2
         with:
-          args: --offline --no-progress public/
+          args: --offline --no-progress --root-dir ${{ github.workspace }}/public public/
           fail: true
       - uses: actions/upload-pages-artifact@v3
         if: github.event_name != 'pull_request'
