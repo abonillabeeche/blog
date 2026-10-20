@@ -37,6 +37,10 @@ On this setup, DeepSeek V4 Flash delivers:
 
 ## Hardware and software
 
+![Two gold DGX Spark units on a shelf next to Jetson AGX Orin developer kits](dgx-spark-lab.jpg#portrait)
+
+*My two DGX Sparks (left) and the Jetson AGX Orins that run the control plane and supporting services (right).*
+
 - 2× NVIDIA DGX Spark: GB10 Grace Blackwell (`sm_121`), arm64, 128 GB unified memory,
   Ubuntu 24.04.
 - One 1 m passive copper QSFP direct-attach cable (Amphenol NJAAKK-AU06) between the

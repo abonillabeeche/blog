@@ -9,3 +9,10 @@
 @media (max-width: 600px) {
   .post-content img[src$="#profile"] { float: none; margin: 0 auto 1rem; display: block; }
 }
+
+/* Tall photos: ![..](photo.jpg#portrait) */
+.post-content img[src$="#portrait"] {
+  max-width: min(100%, 480px);
+  display: block;
+  margin: 0 auto;
+}
