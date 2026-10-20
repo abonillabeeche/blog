@@ -8,6 +8,8 @@ images: ["og.jpg"]
 # canonicalURL: ""
 ---
 
+![Kube-OVN Interconnection on SUSE Virtualization: one network across four clusters](kubeovn-ic.jpg)
+
 Kube-OVN brings NSX-style networking to SUSE Virtualization (Harvester): virtual private
 clouds (VPCs), subnets with access control lists, peering, and NAT. I wanted to go one
 step further and give VMs on *different* clusters a shared, routed network, the way a
