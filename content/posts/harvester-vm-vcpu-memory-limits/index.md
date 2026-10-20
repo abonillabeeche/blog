@@ -9,6 +9,8 @@ images: ["og.jpg"]
 
 Sizing a VM on Harvester, two questions come up fast: how many vCPUs can one VM actually get, and how much memory can it actually use? Harvester's docs cover resource *overcommit ratios* — the knobs that let the scheduler pack more virtual resources onto a host than physically exists — but they don't say where the real ceilings are. I spent a session finding out, on two very different clusters: a 3-node ARM64 cluster built on Ampere Altra CPUs, and a single-node x86_64 box built on a Dell PowerEdge R640. Both questions turned up more than a number — the vCPU ceiling depends entirely on architecture, and the memory ceiling turned out to be two separate walls stacked on top of each other, one of which I only found by actually booting a VM with 8 TiB of RAM.
 
+![Diagram summarizing vCPU ceilings and pinning on ARM64 vs x86_64, and the two memory walls (overcommit ratio and CPU address width) hit while booting an 8 TiB VM](overview-diagram.jpg)
+
 ## Lab setup
 
 ARM64 cluster ("Mt. Collins"): three nodes, each a dual-socket Ampere Altra with 2×80 cores (160 cores/node, no hyperthreading), running Harvester v1.9.1-rc3 (KubeVirt 1.8.4).
