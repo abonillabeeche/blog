@@ -1,0 +1,11 @@
+/* About page portrait: ![..](/images/x.jpg#profile) */
+.post-content img[src$="#profile"] {
+  width: 200px;
+  height: 200px;
+  border-radius: 50%;
+  float: right;
+  margin: 0 0 1rem 1.5rem;
+}
+@media (max-width: 600px) {
+  .post-content img[src$="#profile"] { float: none; margin: 0 auto 1rem; display: block; }
+}

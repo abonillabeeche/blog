@@ -1,0 +1,58 @@
+baseURL = "https://blog.5glinux.com/"
+locale = "en-us"
+title = "5glinux"
+theme = "PaperMod"
+enableRobotsTXT = true
+buildDrafts = false
+buildFuture = false
+
+[pagination]
+  pagerSize = 10
+
+[params]
+  author = "Alejandro Bonilla"
+  description = "Notes from a home lab: Kubernetes, GPUs, storage and local LLMs."
+  defaultTheme = "auto"
+  ShowReadingTime = true
+  ShowCodeCopyButtons = true
+  ShowPostNavLinks = true
+  ShowToc = true
+  TocOpen = false
+  # Lets a cross-post (dev.to, LinkedIn) point back here as the original.
+  canonicalLinkText = "Originally published at"
+
+[params.homeInfoParams]
+  Title = "5glinux"
+  Content = "Field notes from running AI, Kubernetes and storage on real hardware in a home lab."
+
+[[params.socialIcons]]
+  name = "linkedin"
+  url = "https://www.linkedin.com/in/alejandrobonilla"
+
+[[params.socialIcons]]
+  name = "github"
+  url = "https://github.com/abonillabeeche"
+
+[[params.socialIcons]]
+  name = "rss"
+  url = "/index.xml"
+
+[[menu.main]]
+  name = "Posts"
+  url = "/posts/"
+  weight = 10
+[[menu.main]]
+  name = "Tags"
+  url = "/tags/"
+  weight = 20
+[[menu.main]]
+  name = "About"
+  url = "/about/"
+  weight = 30
+
+[outputs]
+  home = ["HTML", "RSS"]
+
+[markup.highlight]
+  noClasses = false
+  lineNos = false
