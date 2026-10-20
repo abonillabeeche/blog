@@ -7,15 +7,23 @@ summary: "Testing real vCPU and memory ceilings on Harvester HCI across ARM64 an
 images: ["og.jpg"]
 ---
 
+**TL;DR:**
+
+- ARM64 VMs on Harvester hit a hard, fixed wall at **512 vCPUs** — baked into QEMU's `virt` machine type (GICv3), unrelated to CPU pinning. x86_64 has no equivalent wall; 1024+ vCPUs booted fine.
+- CPU pinning (`dedicatedCpuPlacement`) isn't a fixed number either — it's whatever CPU capacity is actually free on the node at the time.
+- Guest memory above roughly 1 TiB on x86_64 requires `cpu.model: host-passthrough`. Default CPU model's address width is too narrow for KubeVirt's memory-hotplug headroom, and QEMU refuses to start.
+- Large-memory VMs (above ~1 TiB) also need UEFI (`firmware.bootloader.efi`) set explicitly — legacy BIOS can hang indefinitely building the memory map.
+- Booted a real Ubuntu guest with **8 TiB of RAM**, confirmed from inside the VM. Next ceiling is computable from the CPU's address width: **16 TiB theoretical** on this hardware.
+
 Sizing a VM on Harvester, two questions come up fast: how many vCPUs can one VM actually get, and how much memory can it actually use? Harvester's docs cover resource *overcommit ratios* — the knobs that let the scheduler pack more virtual resources onto a host than physically exists — but they don't say where the real ceilings are. I spent a session finding out, on two very different clusters: a 3-node ARM64 cluster built on Ampere Altra CPUs, and a single-node x86_64 box built on a Dell PowerEdge R640. Both questions turned up more than a number — the vCPU ceiling depends entirely on architecture, and the memory ceiling turned out to be two separate walls stacked on top of each other, one of which I only found by actually booting a VM with 8 TiB of RAM.
 
 ![Diagram summarizing vCPU ceilings and pinning on ARM64 vs x86_64, and the two memory walls (overcommit ratio and CPU address width) hit while booting an 8 TiB VM](overview-diagram.jpg)
 
 ## Lab setup
 
-ARM64 cluster ("Mt. Collins"): three nodes, each a dual-socket Ampere Altra with 2×80 cores (160 cores/node, no hyperthreading), running Harvester v1.9.1-rc3 (KubeVirt 1.8.4).
+ARM64 cluster: three nodes, each a dual-socket Ampere Altra with 2×80 cores (160 cores/node, no hyperthreading), running Harvester v1.9.1-rc3 (KubeVirt 1.8.4).
 
-x86_64 cluster ("harvester-ai"): a single Dell PowerEdge R640, dual Intel Xeon Platinum 8160 (24 cores/socket, hyperthreaded, 96 threads total), 754 GB RAM, running Harvester v1.9.0.
+x86_64 cluster: a single Dell PowerEdge R640, dual Intel Xeon Platinum 8160 (24 cores/socket, hyperthreaded, 96 threads total), 754 GB RAM, running Harvester v1.9.0.
 
 Both clusters use the default Harvester resource-overcommit settings unless noted: 1000% CPU / 150% memory on the ARM64 cluster, 400% CPU / 150% memory on the x86_64 box.
 
@@ -34,7 +42,7 @@ Every one of them passed. Harvester's `KubeVirt` custom resource had no `liveUpd
 
 ### ARM64: a hard wall at 512
 
-I started a VM on an idle ARM64 node (`ampere-3`) at 256 cores, then 512, then 513 — no CPU pinning, default (shared) CPU placement:
+I started a VM on an idle ARM64 node at 256 cores, then 512, then 513 — no CPU pinning, default (shared) CPU placement:
 
 ```console
 $ kubectl get vmi arm-boundary-test -o jsonpath='{.status.phase}'
@@ -50,7 +58,7 @@ level=error msg="Defining the VirtualMachineInstance failed." reason="virError(C
 
 512 vCPUs is the hard ceiling for QEMU/libvirt's `virt` machine type on aarch64 — the machine type Harvester uses for every ARM64 VM. It's tied to the GICv3 interrupt controller's redistributor region sizing, not to anything Harvester or KubeVirt configures; it's baked into how the `virt` machine type is defined. I confirmed it twice more to rule out other explanations:
 
-- Reproduced the identical error on `ampere-2`, a node with CPU Manager (exclusive CPU pinning) **never enabled**. Same failure, same message, same 512 boundary. This rules out pinning or CPU Manager state as the cause.
+- Reproduced the identical error on a second node with CPU Manager (exclusive CPU pinning) **never enabled**. Same failure, same message, same 512 boundary. This rules out pinning or CPU Manager state as the cause.
 - Tried `cpu.model: host-model` explicitly on ARM64. KubeVirt's own admission webhook rejected it before a VM object was even created:
 
 ```console
@@ -85,7 +93,7 @@ End to end, the whole thing took about 40 seconds and never touched other worklo
 
 ### Real pinned ceiling: whatever's actually free
 
-With CPU Manager live on `ampere-3`, I stepped a pinned VM's core count up and watched where the Kubernetes scheduler stopped accepting it:
+With CPU Manager live on that node, I stepped a pinned VM's core count up and watched where the Kubernetes scheduler stopped accepting it:
 
 ```console
 $ kubectl describe pod virt-launcher-pin-test-xxxxx | tail -3
