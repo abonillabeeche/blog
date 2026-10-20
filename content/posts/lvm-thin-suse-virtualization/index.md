@@ -1,7 +1,7 @@
 ---
 title: "LVM thin storage on SUSE Virtualization: chunk sizes, tuning knobs and encryption"
 date: 2026-10-09
-draft: true
+draft: false
 tags: ["harvester", "suse-virtualization", "lvm", "csi", "storage", "performance"]
 summary: "What a summer of work on SUSE Virtualization's LVM CSI driver taught me: why a thin pool's chunk size can cost you 98% of your IOPS, what changed upstream, the new VM storage settings in 1.9.1, and what encryption at rest costs."
 # canonicalURL: ""
