@@ -8,6 +8,8 @@ images: ["og.jpg"]
 # canonicalURL: ""
 ---
 
+![Illustration of a build pipeline: sysprep answer files and bootstrap.ps1 feed a conveyor that turns Windows Server installs into generalized images, which flow into SUSE Virtualization](build-iso-pipeline.jpg)
+
 ## TL;DR
 
 You need three things:
@@ -29,7 +31,8 @@ Then:
    **Windows Unattended & Sysprep Configuration** section: choose **Create New**,
    paste the answer file and create the VM.
 4. About 20 minutes later the VM turns itself off. Its disk is your golden image:
-   export it to an image and create Windows VMs from it with a cloud-config.
+   export it to an image (or [shrink it](#extra-shrink-the-image) first) and create
+   Windows VMs from it with a cloud-config.
 
 SUSE Virtualization 1.9.1 adds a `windows-image-template` that simplifies that last
 step. Everything below explains what happens under the hood and the other ways to
@@ -228,12 +231,104 @@ Two details:
 - **Keep `displayName` short and without spaces.** SUSE Virtualization 1.9 copies it
   into a label, and labels can't contain spaces.
 
-This image keeps the full 36 GiB virtual size. For a smaller image, the repo's
-[shrink Job](https://github.com/abonillabeeche/harvester-windows-cloudbase/tree/main/shrink-export)
-shrinks `C:` to its minimum and uploads a compact qcow2 instead. On Server 2022 that
-gave a 12.3 GiB image that takes 9.27 GiB on disk.
+This image keeps the full 36 GiB virtual size. For a smaller image, use the shrink
+Job in [Extra: shrink the image](#extra-shrink-the-image) instead of this export.
 
-Then delete the build VM, its disks and the `winbuild-unattend` Secret.
+Once the image shows `Imported`, delete the build VM, its disks and the
+`winbuild-unattend` Secret.
+
+## Extra: shrink the image
+
+An image has two sizes:
+
+- **Virtual size:** the disk a new VM starts with. It equals the build disk, 36 GiB.
+- **Physical size:** the data actually stored, and copied whenever a VM is created.
+
+Smaller is better for both, because Cloudbase-Init grows `C:` on deploy anyway.
+
+My repo's
+[shrink Job](https://github.com/abonillabeeche/harvester-windows-cloudbase/tree/main/shrink-export)
+works on the stopped build disk and has two modes:
+
+- **`compact`** converts the disk to qcow2 and drops the zeroed free space. It only
+  reduces the physical size, and it never changes the partitions.
+- **`shrink`** also resizes the NTFS file system on `C:` to its minimum plus 1 GiB of
+  slack, shrinks the partition to match and cuts the virtual disk down to that size.
+
+Either way, the Job then creates the image and uploads the qcow2 to SUSE
+Virtualization's in-cluster upload API. No Rancher or SUSE Virtualization token is
+needed; the Job's own ServiceAccount creates the image.
+
+### Run it
+
+Run the Job before you delete the build disk, in the same namespace as that disk.
+
+1. Load the script as a ConfigMap:
+
+   ```bash
+   cd shrink-export/
+   kubectl -n default create configmap disk-shrink-script \
+     --from-file=entrypoint.sh=entrypoint.sh
+   ```
+
+2. Edit `shrink-and-upload-job.yaml`. These are the values to set:
+
+   ```yaml
+   env:
+     - name: IMAGE_NAME
+       value: win2022
+     - name: IMAGE_DISPLAY
+       value: win2022
+     - name: BACKEND
+       value: "cdi"                 # or "backingimage" for a Longhorn backing image
+     - name: TARGET_STORAGECLASS
+       value: "harvester-longhorn"  # cdi only: where the image is stored
+     - name: MODE
+       value: "shrink"              # or "compact"
+   # ...
+   volumes:
+     - name: src
+       persistentVolumeClaim:
+         claimName: winbuild-rootdisk
+   ```
+
+3. Apply it and follow the log:
+
+   ```bash
+   kubectl -n default apply -f shrink-and-upload-job.yaml
+   kubectl -n default logs -f job/disk-shrink
+   ```
+
+This is the log from my Server 2022 build (trimmed):
+
+```console
+[18:46:50] mode: shrink
+[18:46:50] windows partition: /dev/mapper/loop8p2 (partition #2, start 525336576B)
+[18:46:51] NTFS min=11654688768B, resizing filesystem to 12728664064B (+1024MiB slack)
+[18:46:52] shrinking the partition table entry #2...
+[18:46:52] converting to compact qcow2 at /work/disk.qcow2 ...
+[18:51:28] shrinking qcow2 virtual size to 13255049216B ...
+[18:51:28] creating VirtualMachineImage default/win2022 (backend=cdi, sourceType=upload, targetSC=px-csi-replicated)
+[18:58:43]   HTTP 200
+[18:58:46] done: VirtualMachineImage default/win2022
+```
+
+Shrinking took the image from 36 GiB to 12.3 GiB virtual and 9.27 GiB physical. Most of the
+12 minutes went to the conversion and the upload; earlier runs of the same Job on
+Longhorn finished in about 3 minutes.
+
+### Before you shrink
+
+- **Stop the build VM** and leave it stopped. A running VM holds the disk the Job
+  needs to attach.
+- **Shrink only a disk that sysprep shut down cleanly.** `shrink` refuses to touch an
+  NTFS volume that isn't consistent; `compact` is the safe choice for anything else.
+- **Set `TARGET_STORAGECLASS` with `cdi`,** or the image lands on the default class.
+  CDI also stages the upload in a scratch volume on the default class, so that class
+  needs free space too.
+- **Storage that reports 4096-byte sectors is fine.** Portworx volumes do, and the
+  Job maps the disk through a 512-byte loop device automatically; see
+  [Portworx on SUSE Virtualization](/posts/portworx-suse-virtualization/).
 
 ## Deploy a VM from the image
 
