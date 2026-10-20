@@ -49,6 +49,11 @@ milestone reads like a coming-of-age release for the v2 engine. Planned items in
 
 ## Test setup
 
+![Rack with three 2U Ampere Altra servers with 24 NVMe bays each, above Dell PowerEdge servers](ampere-lab-rack.jpg#portrait)
+
+*Three Ampere Altra nodes (top, 24 NVMe bays each) ran both rounds. Dell PowerEdge
+servers below host other lab clusters.*
+
 Both rounds ran on the same three-node cluster:
 
 - 3× Ampere Altra (arm64) servers.
