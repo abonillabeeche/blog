@@ -52,3 +52,24 @@ jobs:
     steps:
       - id: deployment
         uses: actions/deploy-pages@v4
+
+  indexnow:
+    # Tell Bing, Yandex and other IndexNow engines which URLs exist, right after a deploy.
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    needs: deploy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Submit sitemap URLs
+        env:
+          HOST: blog.5glinux.com
+          KEY: 727e148d0890251c03ab75ed459b9c36
+        run: |
+          sleep 30   # let the Pages CDN pick up the new deploy
+          urls=$(curl -fsSL "https://$HOST/sitemap.xml" | grep -oE '<loc>[^<]+' | sed 's/<loc>//')
+          body=$(printf '%s\n' "$urls" | jq -R -s --arg host "$HOST" --arg key "$KEY" \
+            --arg loc "https://$HOST/$KEY.txt" \
+            '{host:$host, key:$key, keyLocation:$loc, urlList:(split("\n")|map(select(length>0)))}')
+          code=$(curl -s -o /dev/null -w '%{http_code}' -X POST https://api.indexnow.org/indexnow \
+            -H 'Content-Type: application/json; charset=utf-8' -d "$body")
+          echo "IndexNow HTTP $code for $(echo "$urls" | wc -l) URLs"
+          case "$code" in 200|202) ;; *) exit 1 ;; esac
