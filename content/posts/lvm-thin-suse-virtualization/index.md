@@ -45,6 +45,8 @@ it into a smaller fix that has now merged and been backported
 ([csi-driver-lvm#68](https://github.com/harvester/csi-driver-lvm/pull/68)): pools the
 driver creates now use **512 KiB chunks, 16 GiB of metadata and 90% of the volume
 group's free space**.
+[Webber Huang](https://github.com/WebberHuang1118) did that rework, and he also hardened
+the snapshot lifecycle ([csi-driver-lvm#64](https://github.com/harvester/csi-driver-lvm/pull/64)).
 
 My one caveat: on hardware RAID, the chunk should cover a full RAID stripe. On a
 four-disk RAID set with 256 KiB strips, a 1 MiB chunk avoids partial-stripe writes,
@@ -175,3 +177,10 @@ Its logs say "Updated LVMVolumeGroup" whether or not anything changed.
 - **Use the new storage settings in 1.9.1** (`cache: none`, `io: native`, I/O threads)
   for latency-sensitive VMs.
 - **Encryption is cheap for writes and expensive for reads.** Plan vCPUs accordingly.
+
+## Thanks
+
+Many thanks to [Webber Huang](https://github.com/WebberHuang1118) for reviewing my pull
+requests so carefully, and for reworking and improving them into changes that fit the
+driver better than my originals did. Several of the improvements in this post exist in
+their current form because of his work.
