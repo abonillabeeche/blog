@@ -1,7 +1,7 @@
 ---
 title: "Reachy Mini on a local AI stack: vision, face recognition and a menu-bar remote"
 date: 2026-10-19
-draft: true
+draft: false
 tags: ["reachy-mini", "robotics", "vlm", "face-recognition", "local-llm", "kubernetes", "macos"]
 summary: "I pointed a Reachy Mini robot at my own Kubernetes-hosted speech, language and vision models. Here's how it sees with a VLM, why face recognition uses embeddings instead, and the SwiftBar menu that controls it all from my Mac."
 # canonicalURL: ""
