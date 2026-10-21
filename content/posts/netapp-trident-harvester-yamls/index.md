@@ -12,6 +12,15 @@ images: ["og.jpg"]
 > troubleshooting, read the complete article in the Harvester knowledge base:
 > [Using NetApp Storage on Harvester](https://harvesterhci.io/kb/install_netapp_trident_csi).
 
+**Update, 2026-10-21:** a NetApp Consulting Architect reviewed the original manifests
+and flagged several things worth tightening: dropping `limitAggregateUsage` (it needs
+a cluster-admin login just to read aggregate usage, and isn't a real concern on
+all-flash aggregates), dropping `spaceReserve`/`snapshotReserve` and `svm`/`dataLIF`
+as redundant given this setup, moving NFS mount options to the StorageClass, and using
+`sanType` instead of `storagePools` to pin SAN classes to a protocol. I re-tested every
+one of these on the lab cluster before changing anything here; both this post and the
+knowledge base article below now reflect the corrected manifests.
+
 Tested with SUSE Virtualization (Harvester) v1.9.0, Trident 26.06.1 (Helm chart
 `100.2606.1`) and ONTAP 9.16.1. NFS, iSCSI and NVMe/TCP all support VM boot volumes,
 live migration, online expansion and VM snapshots.
@@ -21,9 +30,9 @@ You'll need:
 - The Harvester kubeconfig, plus `kubectl` and `helm`.
 - An ONTAP SVM with a management LIF and data LIFs for each protocol. NVMe/TCP needs the
   `NVMe_oF` license.
-- An ONTAP login with `http` and `ontapi` access. My backends below use
-  `limitAggregateUsage`, which needs a cluster-scoped `admin` login; with an SVM-scoped
-  `vsadmin`, drop that field and point `managementLIF` at the SVM.
+- An ONTAP login with `http` and `ontapi` access, SVM-scoped `vsadmin` role. Point
+  `managementLIF` at the SVM's own management LIF — Trident infers the SVM from it, so
+  the backends below skip the `svm` field.
 
 ## 0. Optional: storage network
 
@@ -102,12 +111,11 @@ spec:
 kubectl apply -f 01-cloudinit-netapp-multipathd.yaml
 ```
 
-It takes effect at each node's next boot. To apply it now, write the same
-`98-netapp.conf` on each node as root, then:
+Despite the `initramfs` stage name, this applies immediately — no reboot. Verify it
+actually merged into the running config (don't trust an empty `multipath -ll` alone):
 
 ```bash
-systemctl enable --now multipathd
-multipath -ll    # must not list any local disk
+multipathd -k"show config" | grep -A6 '^blacklist {'   # must show vendor ".*" / product ".*"
 ```
 
 NVMe/TCP uses native NVMe multipath and NFS needs nothing on the host.
@@ -121,14 +129,16 @@ helm repo update
 # Optional: run the node plugin only on labelled nodes (e.g. skip a witness node)
 kubectl label node <node-1> <node-2> netapp-trident=enabled --overwrite
 
-helm upgrade --install trident netapp-trident/trident-operator --version 100.2606.1 \
+helm upgrade --install trident netapp-trident/trident-operator --version <chart version> \
   --namespace trident --create-namespace --wait \
   --set tridentNodePluginNodeSelector.netapp-trident=enabled
 
 kubectl -n trident get pods -o wide
 ```
 
-Drop the label and the `--set` line to run Trident on every node.
+Drop the label and the `--set` line to run Trident on every node. Pick a version from
+`helm search repo netapp-trident --versions`; tested here with chart `100.2606.1`
+(Trident 26.06.1) — don't pin a version in your own docs, versions ship monthly.
 
 ## 3. ONTAP credentials
 
@@ -144,6 +154,12 @@ One `TridentBackendConfig` per protocol; delete the ones you don't need. SAN bac
 discover every LIF in the SVM, so they take no `dataLIF`. If several clusters share an
 SVM, give each a unique `backendName` and a `storagePrefix` such as `hv1_`.
 
+Left out on purpose: `spaceReserve`/`snapshotReserve` (already Trident's defaults),
+`limitAggregateUsage` (needs a cluster-admin login just to read aggregate usage — more
+access than Trident needs, and not a real problem on flash anyway), and `nfsMountOptions`
+(a fallback that doesn't even show up in the PV's `mountOptions` — set it on the
+StorageClass instead, step 5).
+
 `03-backends.yaml`:
 
 ```yaml
@@ -157,18 +173,11 @@ spec:
   version: 1
   storageDriverName: ontap-nas
   backendName: netapp-nas
-  managementLIF: <management LIF IP>
-  dataLIF: <NFS data LIF IP>          # optional
-  svm: <svm name>
+  managementLIF: <SVM management LIF IP>
   autoExportPolicy: true
   autoExportCIDRs: ["<storage network CIDR>"]
-  nfsMountOptions: "nfsvers=4.1"
-  limitAggregateUsage: "80%"
   credentials:
     name: netapp-creds
-  defaults:
-    spaceReserve: none
-    snapshotReserve: "0"
 ---
 # iSCSI
 apiVersion: trident.netapp.io/v1
@@ -181,14 +190,9 @@ spec:
   storageDriverName: ontap-san
   sanType: iscsi
   backendName: netapp-iscsi
-  managementLIF: <management LIF IP>
-  svm: <svm name>
-  limitAggregateUsage: "80%"
+  managementLIF: <SVM management LIF IP>
   credentials:
     name: netapp-creds
-  defaults:
-    spaceReserve: none
-    snapshotReserve: "0"
 ---
 # NVMe/TCP
 apiVersion: trident.netapp.io/v1
@@ -201,14 +205,9 @@ spec:
   storageDriverName: ontap-san
   sanType: nvme
   backendName: netapp-nvme
-  managementLIF: <management LIF IP>
-  svm: <svm name>
-  limitAggregateUsage: "80%"
+  managementLIF: <SVM management LIF IP>
   credentials:
     name: netapp-creds
-  defaults:
-    spaceReserve: none
-    snapshotReserve: "0"
 ```
 
 For Fibre Channel, copy the iSCSI backend with `sanType: fcp` and a new name.
@@ -220,8 +219,11 @@ kubectl -n trident get tridentbackendconfigs    # PHASE Bound, STATUS Success
 
 ## 5. StorageClasses and VolumeSnapshotClass
 
-Pin each class to its backend with `storagePools`. Otherwise `backendType: ontap-san`
-can land a volume on any SAN backend.
+Pin each class to a protocol with `sanType` (`iscsi`/`nvme`/`fcp`), not `storagePools` by
+backend name — it's the direct mechanism Trident gives you for exactly this, and survives
+a backend rename. `storagePools` is for steering across multiple SVMs instead. Add
+`fsType: "nfs"` to the NFS class too: without it, Kubernetes silently skips applying a
+pod's `fsGroup` to the volume.
 
 `04-storageclasses.yaml`:
 
@@ -233,7 +235,9 @@ metadata:
 provisioner: csi.trident.netapp.io
 parameters:
   backendType: "ontap-nas"
-  storagePools: "netapp-nas:.*"
+  fsType: "nfs"
+mountOptions:
+  - nfsvers=4.1
 reclaimPolicy: Delete
 volumeBindingMode: Immediate
 allowVolumeExpansion: true
@@ -245,7 +249,7 @@ metadata:
 provisioner: csi.trident.netapp.io
 parameters:
   backendType: "ontap-san"
-  storagePools: "netapp-iscsi:.*"
+  sanType: "iscsi"
   fsType: "ext4"
 reclaimPolicy: Delete
 volumeBindingMode: Immediate
@@ -258,7 +262,7 @@ metadata:
 provisioner: csi.trident.netapp.io
 parameters:
   backendType: "ontap-san"
-  storagePools: "netapp-nvme:.*"
+  sanType: "nvme"
   fsType: "ext4"
 reclaimPolicy: Delete
 volumeBindingMode: Immediate
@@ -277,7 +281,10 @@ kubectl apply -f 04-storageclasses.yaml
 ```
 
 No CDI annotation is needed: CDI already maps `ontap-san` to `ReadWriteMany` block and
-`ontap-nas` to `ReadWriteMany` filesystem, which is what live migration needs.
+`ontap-nas` to `ReadWriteMany` filesystem, which is what live migration needs — check
+`kubectl get storageprofile <class> -o yaml` and `status` is already filled in. The
+`storageclass.kubevirt.io/is-default-virt-class` annotation you may see elsewhere is
+unrelated; it only matters if you want a NetApp class to replace Longhorn as the default.
 
 ## 6. Register the snapshot class with Harvester
 
