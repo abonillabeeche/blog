@@ -142,7 +142,7 @@ Final SnapMirror updates took 6 to 15 seconds per volume and promotes about 10 s
 
 ## Harvey and Trident Protect
 
-NetApp's own answer to the same problem is [Trident Protect](https://docs.netapp.com/us-en/trident/trident-protect/trident-protect-kubevirt-vms.html): its `AppMirrorRelationship` replicates both the volumes and the application metadata (through an S3 bucket) and fails the VM over by promoting the relationship. NetApp has described it for [OpenShift Virtualization](https://community.netapp.com/t5/Tech-ONTAP-Blogs/OpenShift-Virtualization-Disaster-Recovery-with-NetApp-Trident-Protect/ba-p/460716), and Yves at NetApp has a [KubeVirt scenario](https://github.com/YvosOnTheHub/LabNetApp/tree/master/Kubernetes_v6/Trident_Protect_Scenarios/Scenario11). Harvey takes a different split: NetApp moves only the disk data, and Harvey owns the VM metadata, the ordering and the checks. I will set up Trident Protect on the same two clusters, the way NetApp recommends, in a separate post.
+NetApp's own answer to the same problem is [Trident Protect](https://docs.netapp.com/us-en/trident/trident-protect/trident-protect-kubevirt-vms.html): its `AppMirrorRelationship` replicates both the volumes and the application metadata (through an S3 bucket) and fails the VM over by promoting the relationship. Yves at NetApp has a [KubeVirt scenario](https://github.com/YvosOnTheHub/LabNetApp/tree/master/Kubernetes_v6/Trident_Protect_Scenarios/Scenario11). Harvey takes a different split: NetApp moves only the disk data, and Harvey owns the VM metadata, the ordering and the checks. I will set up Trident Protect on the same two clusters, the way NetApp recommends, in a separate post.
 
 ## Try it
 

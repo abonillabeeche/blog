@@ -251,6 +251,6 @@ I sent this post to NetApp engineers for review. In short:
 - **Synchronous and active sync:** there is no Trident integration (yet), by design. Customers who need that usually get MetroCluster, which does the mirroring and failover automatically and transparently.
 - **Consistency groups:** covered in Trident by the VolumeGroupSnapshot functionality, which does not yet work in combination with replication.
 - **Promote quirk:** not a known issue and not seen in support cases; NetApp support is trying to reproduce it.
-- **Trident Protect:** it can cover the whole workflow, including the VM failover, without an additional orchestration tool. NetApp has written about it for [OpenShift Virtualization](https://community.netapp.com/t5/Tech-ONTAP-Blogs/OpenShift-Virtualization-Disaster-Recovery-with-NetApp-Trident-Protect/ba-p/460716), and Yves at NetApp has a [KubeVirt scenario](https://github.com/YvosOnTheHub/LabNetApp/tree/master/Kubernetes_v6/Trident_Protect_Scenarios/Scenario11) in his lab repository. It should work on SUSE Virtualization too; I will cover that in a separate post.
+- **Trident Protect:** it can cover the whole workflow, including the VM failover, without an additional orchestration tool. Yves at NetApp has a [KubeVirt scenario](https://github.com/YvosOnTheHub/LabNetApp/tree/master/Kubernetes_v6/Trident_Protect_Scenarios/Scenario11) in his lab repository. It should work on SUSE Virtualization too; I will cover that in a separate post.
 
 Thanks to the NetApp team for the quick and candid review.
