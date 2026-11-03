@@ -57,21 +57,7 @@ VLOADER> boot
 
 Those last two lines give the simulator 23 disks of 9 GB instead of the default small ones; I used the same layout on both simulators. Serial number and system ID survive reboots.
 
-After `cluster setup` on the console, the second set of codes from the simulator license file (`CMode_licenses_9.16.1.txt`, section "Licenses for the second node in a cluster") applies cleanly:
-
-```console
-ontap-b::> system license show -fields package,serial-number
-serial-number                  package
------------------------------- -------
-1-81-0000000000000004034389062 NFS
-1-81-0000000000000004034389062 iSCSI
-1-81-0000000000000004034389062 SnapRestore
-1-81-0000000000000004034389062 SnapMirror
-1-81-0000000000000004034389062 FlexClone
-...
-1-81-0000000000000004034389062 NVMe_oF
-11 entries were displayed.
-```
+After `cluster setup` on the console, I applied the second set of codes from the simulator license file (section "Licenses for the second node in a cluster"): 11 packages, including NFS, iSCSI, FlexClone, SnapMirror and NVMe_oF.
 
 In that file, the SnapMirror code is described as "SnapMirror, including synchronous SnapMirror". No separate replication license was needed.
 
