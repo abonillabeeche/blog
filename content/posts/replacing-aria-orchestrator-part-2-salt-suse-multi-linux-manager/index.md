@@ -1,6 +1,6 @@
 ---
 title: "Replacing Aria Orchestrator, Part 2: reusing Salt states with SUSE Multi-Linux Manager"
-date: 2026-11-02
+date: 2026-11-02T22:00:00Z
 draft: false
 tags: ["suse-multi-linux-manager", "salt", "suse-virtualization", "harvester", "cloud-init", "gitops", "vmware-migration", "wordpress"]
 summary: "Part 2 of replacing Aria Orchestrator: the Salt state an Aria cloud template applies runs unchanged from SUSE Multi-Linux Manager. A VM bootstraps itself with cloud-init on SUSE Virtualization, registers with an activation key, gets WordPress from a highstate, and is then changed and kept in line from SUSE Multi-Linux Manager."

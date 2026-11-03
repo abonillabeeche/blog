@@ -1,6 +1,6 @@
 ---
 title: "Replacing Aria Orchestrator, Part 1: workflows with GitOps for approved, scheduled VM resizes on SUSE Virtualization"
-date: 2026-11-02
+date: 2026-11-02T14:00:00Z
 draft: false
 tags: ["suse-virtualization", "harvester", "gitops", "fleet", "rancher", "kubevirt", "github-actions", "vmware-migration"]
 summary: "Part 1 of replacing Aria Orchestrator. A working replacement for a resize workflow built from a Git repo of VM manifests, a GitHub request form, policy checks, code-owner approval, merges at a maintenance-window time, Rancher Fleet applying to SUSE Virtualization, and CPU/memory hot-plug so most resizes need no reboot."
