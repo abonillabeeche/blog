@@ -434,4 +434,4 @@ In the system history, the whole sequence is recorded: registration, the automat
 
 ## What's next
 
-Natural follow-ups in the same lab: Content Lifecycle Management for frozen SLES 16.1 repository snapshots, recurring highstates per system group, and patching the WordPress VMs from SUSE Multi-Linux Manager.
+[Part 3: forms, schedules, approved content and workflows](/posts/replacing-aria-orchestrator-part-3-day-2-suse-multi-linux-manager/) covers the day-2 patterns that Aria users rely on, on the same WordPress VM: a Salt formula with a web form, a recurring highstate on a system group, dev and prod content snapshots with Content Lifecycle Management, and an action chain that upgrades an outdated package, reapplies the state and runs a smoke test.
