@@ -16,3 +16,34 @@
   display: block;
   margin: 0 auto;
 }
+
+/* Callouts: GitHub-style alerts, rendered by layouts/_markup/render-blockquote.html
+   > [!NOTE]  > [!TIP]  > [!IMPORTANT]  > [!WARNING]  > [!CAUTION]  (optional title after the tag) */
+.post-content blockquote.callout {
+  --c: #2f6fdd;
+  border-inline-start: 4px solid var(--c);
+  background: color-mix(in srgb, var(--c) 9%, transparent);
+  border-radius: 0 8px 8px 0;
+  padding: 0.75rem 1rem;
+  margin: 1.5rem 0;
+  color: var(--primary);
+}
+.post-content blockquote.callout > :last-child { margin-bottom: 0; }
+.post-content .callout-title {
+  font-weight: 700;
+  color: var(--c);
+  margin-bottom: 0.4rem;
+  display: flex;
+  gap: 0.45rem;
+  align-items: center;
+}
+.post-content blockquote.callout-note      { --c: #2f6fdd; }
+.post-content blockquote.callout-tip       { --c: #1a8a4a; }
+.post-content blockquote.callout-important { --c: #8250df; }
+.post-content blockquote.callout-warning   { --c: #b26b00; }
+.post-content blockquote.callout-caution   { --c: #cf222e; }
+[data-theme="dark"] .post-content blockquote.callout-note      { --c: #6ea8fe; }
+[data-theme="dark"] .post-content blockquote.callout-tip       { --c: #4cc38a; }
+[data-theme="dark"] .post-content blockquote.callout-important { --c: #b392f0; }
+[data-theme="dark"] .post-content blockquote.callout-warning   { --c: #e3a83a; }
+[data-theme="dark"] .post-content blockquote.callout-caution   { --c: #ff7b72; }

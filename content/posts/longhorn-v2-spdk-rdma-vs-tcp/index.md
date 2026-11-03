@@ -140,11 +140,12 @@ RDMA improved too, with write latency falling from 272 µs to 72 µs. RDMA's lea
 from 4× to 2× on write latency and disappeared on sequential write, where both
 transports now fill the wire.
 
-**One caveat:** this is a before/after on the same hardware, not a controlled
-experiment. Besides the Longhorn and SPDK versions, the operating system changed
-(Ubuntu 24.04 → SLES 16), and round 1 volumes weren't preconditioned, so round 1
-writes also paid for first-write allocation in SPDK's thin volumes. I can't credit the
-whole TCP improvement to SPDK alone; part 2 will use one fixed stack.
+> [!NOTE] One caveat
+> This is a before/after on the same hardware, not a controlled
+> experiment. Besides the Longhorn and SPDK versions, the operating system changed
+> (Ubuntu 24.04 → SLES 16), and round 1 volumes weren't preconditioned, so round 1
+> writes also paid for first-write allocation in SPDK's thin volumes. I can't credit the
+> whole TCP improvement to SPDK alone; part 2 will use one fixed stack.
 
 ## Reading the round 2 results
 

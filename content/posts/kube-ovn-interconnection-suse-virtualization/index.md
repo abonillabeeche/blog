@@ -20,10 +20,11 @@ clusters, and VMs on three of them now reach each other in 1–2 ms. Along the w
 learned where its limits are, worked around a routing quirk in Kube-OVN 1.16.2, and saw
 its data plane keep VMs connected through a control-plane recovery.
 
-**A caveat up front:** SUSE Virtualization 1.9 lists multi-cluster networking as **not
-supported**, and nothing about OVN-IC appears in its UI. Everything here is a lab
-experiment. VPCs, peering, subnet ACLs and NAT on a single cluster are supported; the
-cross-cluster part is not.
+> [!WARNING] Not supported in SUSE Virtualization 1.9
+> SUSE Virtualization 1.9 lists multi-cluster networking as **not
+> supported**, and nothing about OVN-IC appears in its UI. Everything here is a lab
+> experiment. VPCs, peering, subnet ACLs and NAT on a single cluster are supported; the
+> cross-cluster part is not.
 
 ## What I built
 

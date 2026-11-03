@@ -20,7 +20,8 @@ images: ["og.jpg"]
 
 I wanted VM disaster recovery between two [SUSE Virtualization](https://www.suse.com/products/rancher/virtualization/) (Harvester) clusters with the storage array doing the heavy lifting: replicate the disks with SnapMirror, keep a stopped copy of each VM on the DR side, and fail over in a couple of minutes. Both clusters already used NetApp Trident against an ONTAP simulator (see [NetApp Trident on SUSE Virtualization: just the YAMLs](/posts/netapp-trident-harvester-yamls/)). This post covers the storage half: a second simulator, peering, replication through Trident, and what I measured. Orchestration, done by a small CLI called Harvey that moves the VM definitions and runs failover and failback, is covered in the companion post: [VM failover and failback with Harvey and NetApp SnapMirror](/posts/harvey-vm-failover-netapp-snapmirror-suse-virtualization/).
 
-**Update (November 3):** NetApp engineers reviewed this post. Their feedback is folded into the sections below and summarized in [What NetApp said](#what-netapp-said).
+> [!IMPORTANT] Update, November 3
+> NetApp engineers reviewed this post. Their feedback is folded into the sections below and summarized in [What NetApp said](#what-netapp-said).
 
 ## Setup
 
@@ -230,16 +231,18 @@ Lag is the age of the newest snapshot that reached the destination, so it is als
 
 Scheduled transfers for this light workload took a few seconds each (for example, 4.09 MB in 8 s). With a one-minute schedule the worst case is roughly one minute plus the transfer time; with the built-in `5min` schedule, expect up to five minutes plus transfer time. A planned failover stops the VM first and then runs one more update per disk, which took 6 to 15 seconds per volume here, so nothing is lost.
 
-**Use five minutes, not one.** NetApp supports five minutes as the minimum SnapMirror schedule; one minute works, as above, but is not supported. Even five minutes deserves care on a busy array: every volume can have a SnapMirror relationship (up to 5,000 volumes per system), but only 100 or 250 transfers run concurrently, depending on the platform. A handful of volumes on a quiet system is easy; thousands of volumes on a loaded one is not. My one-minute lab schedule also made the simulator's memory problems and the promote race below more likely.
+> [!WARNING] Use five minutes, not one
+> NetApp supports five minutes as the minimum SnapMirror schedule; one minute works, as above, but is not supported. Even five minutes deserves care on a busy array: every volume can have a SnapMirror relationship (up to 5,000 volumes per system), but only 100 or 250 transfers run concurrently, depending on the platform. A handful of volumes on a quiet system is easy; thousands of volumes on a loaded one is not. My one-minute lab schedule also made the simulator's memory problems and the promote race below more likely.
 
 ## Gotchas
 
-**Trident marks a mirror promoted while ONTAP still has it read-only.** With Trident 26.06.1 and ONTAP 9.16.1, I saw a destination TMR reach status `promoted` while the volume was still a DP (read-only) volume. The VM then failed to start with `AttachVolume.Attach failed ... volume is not read-write`. It happened in two situations:
-
-- A scheduled transfer was running when the promote arrived. Trident logged `Snapmirror break failed: snapmirror transfer already in progress`, requeued, and still reported `promoted`.
-- A relationship that was already quiesced (paused) before the promote. Trident set `promoted` without breaking it.
-
-NetApp had not seen this in support cases and is trying to reproduce it. Harvey's workaround: abort a running transfer before promoting, then check the volume type through the ONTAP REST API (`GET /api/storage/volumes?fields=type`) and, if it is still `dp`, quiesce and break the relationship directly (`PATCH /api/snapmirror/relationships/{uuid}` with `state: paused`, then `broken_off`). With a one-minute schedule a transfer is running a good part of the time, so this matters.
+> [!CAUTION] Trident marks a mirror promoted while ONTAP still has it read-only
+> With Trident 26.06.1 and ONTAP 9.16.1, I saw a destination TMR reach status `promoted` while the volume was still a DP (read-only) volume. The VM then failed to start with `AttachVolume.Attach failed ... volume is not read-write`. It happened in two situations:
+>
+> - A scheduled transfer was running when the promote arrived. Trident logged `Snapmirror break failed: snapmirror transfer already in progress`, requeued, and still reported `promoted`.
+> - A relationship that was already quiesced (paused) before the promote. Trident set `promoted` without breaking it.
+>
+> NetApp had not seen this in support cases and is trying to reproduce it. Harvey's workaround: abort a running transfer before promoting, then check the volume type through the ONTAP REST API (`GET /api/storage/volumes?fields=type`) and, if it is still `dp`, quiesce and break the relationship directly (`PATCH /api/snapmirror/relationships/{uuid}` with `state: paused`, then `broken_off`). With a one-minute schedule a transfer is running a good part of the time, so this matters.
 
 **Each disk is its own consistency point.** Every PVC is a separate relationship on its own schedule. In an unplanned failover test, the data disks of one VM came back from 03:56:57 and the root disk from 03:56:02. A planned failover is not affected because the VM is stopped before the final update. In Trident, crash-consistent groups of volumes come from the VolumeGroupSnapshot functionality, but according to NetApp that does not work together with replication yet.
 

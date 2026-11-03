@@ -7,19 +7,21 @@ summary: "A copy-paste version of my Harvester knowledge base article on NetApp 
 images: ["og.jpg"]
 ---
 
-> **Short version.** This post keeps only the manifests and commands. For the full
+> [!NOTE] Short version
+> This post keeps only the manifests and commands. For the full
 > explanation, including network design, witness nodes, Fibre Channel notes and
 > troubleshooting, read the complete article in the Harvester knowledge base:
 > [Using NetApp Storage on Harvester](https://harvesterhci.io/kb/install_netapp_trident_csi).
 
-**Update, 2026-10-21:** a NetApp Consulting Architect reviewed the original manifests
-and flagged several things worth tightening: dropping `limitAggregateUsage` (it needs
-a cluster-admin login just to read aggregate usage, and isn't a real concern on
-all-flash aggregates), dropping `spaceReserve`/`snapshotReserve` and `svm`/`dataLIF`
-as redundant given this setup, moving NFS mount options to the StorageClass, and using
-`sanType` instead of `storagePools` to pin SAN classes to a protocol. I re-tested every
-one of these on the lab cluster before changing anything here; both this post and the
-knowledge base article below now reflect the corrected manifests.
+> [!IMPORTANT] Update, 2026-10-21
+> A NetApp Consulting Architect reviewed the original manifests
+> and flagged several things worth tightening: dropping `limitAggregateUsage` (it needs
+> a cluster-admin login just to read aggregate usage, and isn't a real concern on
+> all-flash aggregates), dropping `spaceReserve`/`snapshotReserve` and `svm`/`dataLIF`
+> as redundant given this setup, moving NFS mount options to the StorageClass, and using
+> `sanType` instead of `storagePools` to pin SAN classes to a protocol. I re-tested every
+> one of these on the lab cluster before changing anything here; both this post and the
+> knowledge base article below now reflect the corrected manifests.
 
 Tested with SUSE Virtualization (Harvester) v1.9.0, Trident 26.06.1 (Helm chart
 `100.2606.1`) and ONTAP 9.16.1. NFS, iSCSI and NVMe/TCP all support VM boot volumes,
@@ -59,8 +61,10 @@ spec:
 
 ## 1. multipathd, NetApp LUNs only (iSCSI and FC)
 
-Never start `multipathd` without this configuration, or it claims local and Longhorn
-disks. `01-cloudinit-netapp-multipathd.yaml`:
+> [!CAUTION] Never start multipathd without this configuration
+> Without it, `multipathd` claims local and Longhorn disks.
+
+`01-cloudinit-netapp-multipathd.yaml`:
 
 ```yaml
 apiVersion: node.harvesterhci.io/v1beta1

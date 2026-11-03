@@ -124,10 +124,11 @@ against that:
 - **Face following:** the head eased toward faces too aggressively. Lowering the
   tracking easing factor from 0.15 to 0.06 makes it glide instead of snap.
 
-One warning if you modify a Reachy Mini this way: firmware and SDK updates replace
-the SDK files, which wipes these patches. My `install.sh` re-applies everything after
-an update. The SDK 1.11 update also introduced a fixed 15° head-pitch trim that sent the
-head slamming down while following a face; the installer now resets it to zero.
+> [!WARNING] Updates wipe these patches
+> If you modify a Reachy Mini this way, firmware and SDK updates replace
+> the SDK files, which wipes these patches. My `install.sh` re-applies everything after
+> an update. The SDK 1.11 update also introduced a fixed 15° head-pitch trim that sent the
+> head slamming down while following a face; the installer now resets it to zero.
 
 ## The SwiftBar remote
 

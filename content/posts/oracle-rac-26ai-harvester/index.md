@@ -422,8 +422,9 @@ and role separation. Certification remains open: Harvester isn't listed in Oracl
 
 ## Step 7: Restrict the Oracle VMs to licensed hosts
 
-*This is an engineering reading of Oracle's public policy documents, not legal advice. Your Oracle agreement is what
-counts; get Oracle's or a licensing specialist's written position before running this in production.*
+> [!NOTE] Not legal advice
+> This is an engineering reading of Oracle's public policy documents, not legal advice. Your Oracle agreement is what
+> counts; get Oracle's or a licensing specialist's written position before running this in production.
 
 **Partitioning.** Oracle's Partitioning Policy accepts only the hard-partitioning technologies it names. For KVM
 that is Oracle Linux KVM managed by Oracle Linux Virtualization Manager, with cores pinned by its own tool and no live

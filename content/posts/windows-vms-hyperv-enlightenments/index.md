@@ -164,9 +164,10 @@ such as many disks behind one controller or persistent reservations for clusteri
 3. Start it again. Windows detects the enlightenments at boot; no driver changes are
    needed.
 
-Changing the disk bus of an existing Windows VM is riskier: Windows must already have
-the virtio-blk driver installed, or it won't boot. Install the driver first (the SUSE
-VMDP package includes it), then switch the bus.
+> [!CAUTION] Install virtio-blk before changing the disk bus
+> Changing the disk bus of an existing Windows VM is riskier: Windows must already have
+> the virtio-blk driver installed, or it won't boot. Install the driver first (the SUSE
+> VMDP package includes it), then switch the bus.
 
 ## What's next
 

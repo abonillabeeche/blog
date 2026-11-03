@@ -77,8 +77,9 @@ Community image [`eugr/spark-vllm-b12x`](https://hub.docker.com/r/eugr/spark-vll
 solves this. It ships GB10-specific kernels, called B12X, for the MoE layers, linear
 layers, attention and the MLA output projection, along with DeepSeek V4 model support.
 
-**Pin a dated nightly tag.** `latest` changes every few days, and the environment
-variables below change with it.
+> [!TIP] Pin a dated nightly tag
+> `latest` changes every few days, and the environment
+> variables below change with it.
 
 ## Step 2: Split the model across both nodes
 

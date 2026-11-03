@@ -231,12 +231,13 @@ kubectl -n portworx exec <px-pod> -c portworx -- \
 
 Run it once; it applies to the whole cluster. Confirm with `pxctl license list`.
 
-If the license server doesn't answer, the command blocks. Portworx retries up to six
-times, 60 seconds each, while holding the cluster license lock, and after 5 minutes the
-daemon on that node panics with `Lock held beyond configured timeout` and restarts. On
-my first attempt that happened even though `curl` from the same node reached the server
-in 0.3 seconds. Both other nodes kept serving I/O, and a retry the next day succeeded in
-2 seconds. Treat a hung activation as a node outage and don't retry it in a loop.
+> [!WARNING] A hung license activation restarts the node's Portworx daemon
+> If the license server doesn't answer, the command blocks. Portworx retries up to six
+> times, 60 seconds each, while holding the cluster license lock, and after 5 minutes the
+> daemon on that node panics with `Lock held beyond configured timeout` and restarts. On
+> my first attempt that happened even though `curl` from the same node reached the server
+> in 0.3 seconds. Both other nodes kept serving I/O, and a retry the next day succeeded in
+> 2 seconds. Treat a hung activation as a node outage and don't retry it in a loop.
 
 ## StorageClasses and I/O profiles
 

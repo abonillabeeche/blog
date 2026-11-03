@@ -154,16 +154,17 @@ $ kubectl -n vm-demo get vmi web-01 -o jsonpath='{.status.memory}'
 
 Decreasing memory, or growing past the ceiling, still needs a restart.
 
-**Single-node clusters cannot finish the live step.** KubeVirt will not schedule the migration target pod on the same node as the source. On my single-node lab cluster the VM kept running on the same boot, KubeVirt raised the hot-plug conditions, and the migration waited for a second node that does not exist:
-
-```console
-$ kubectl -n vm-demo get vm db-01 -o jsonpath='{range .status.conditions[*]}{.type}={.status} {end}'
-Ready=True DataVolumesReady=True LiveMigratable=True StorageLiveMigratable=True AgentConnected=True HotVCPUChange=True HotMemoryChange=True
-$ kubectl -n vm-demo get events | grep -i anti-affinity
-2m31s   Warning   FailedScheduling   pod/virt-launcher-db-01-pdw29   0/1 nodes are available: 1 node(s) didn't match pod anti-affinity rules. ...
-```
-
-On a cluster with two or more nodes the same change completes live. For single-node clusters, and for changes that need a restart anyway, Step 4 adds a controlled restart.
+> [!WARNING] Single-node clusters cannot finish the live step
+> KubeVirt will not schedule the migration target pod on the same node as the source. On my single-node lab cluster the VM kept running on the same boot, KubeVirt raised the hot-plug conditions, and the migration waited for a second node that does not exist:
+>
+> ```console
+> $ kubectl -n vm-demo get vm db-01 -o jsonpath='{range .status.conditions[*]}{.type}={.status} {end}'
+> Ready=True DataVolumesReady=True LiveMigratable=True StorageLiveMigratable=True AgentConnected=True HotVCPUChange=True HotMemoryChange=True
+> $ kubectl -n vm-demo get events | grep -i anti-affinity
+> 2m31s   Warning   FailedScheduling   pod/virt-launcher-db-01-pdw29   0/1 nodes are available: 1 node(s) didn't match pod anti-affinity rules. ...
+> ```
+>
+> On a cluster with two or more nodes the same change completes live. For single-node clusters, and for changes that need a restart anyway, Step 4 adds a controlled restart.
 
 ### Step 3: Let Fleet apply the repo
 

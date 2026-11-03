@@ -113,9 +113,10 @@ spec:
               dedicatedIOThread: true    # give this disk its own I/O thread
 ```
 
-One combination is a trap: `io: native` with any cache mode other than `none` is
-accepted today, but the VM then fails to start. A webhook that rejects it up front is
-in review ([harvester#11806](https://github.com/harvester/harvester/pull/11806)).
+> [!WARNING] io: native requires cache: none
+> One combination is a trap: `io: native` with any cache mode other than `none` is
+> accepted today, but the VM then fails to start. A webhook that rejects it up front is
+> in review ([harvester#11806](https://github.com/harvester/harvester/pull/11806)).
 
 ## In review: encryption at rest
 
