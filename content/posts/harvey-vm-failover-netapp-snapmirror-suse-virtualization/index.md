@@ -31,6 +31,22 @@ Storage replication only gets you half of a VM failover. The DR site also needs 
 
 Harvey keeps no state of its own. Which site is primary is recorded in labels on the two copies of the VM and in the TMR states on both clusters, so any machine with the config can run it. ONTAP credentials are not in the config either: for every disk, Harvey follows PV → TridentVolume → TridentBackendConfig and uses the management LIF and credentials Secret that Trident already has.
 
+## What happens to the VM
+
+While a VM is protected, both clusters hold a `VirtualMachine` object for it:
+
+- On the **primary**, the VM runs normally on its PVCs.
+- On **DR**, the replica is defined but stopped (`runStrategy: Halted`): no virt-launcher pod, no VMI, nothing consuming CPU or memory. Its PVCs are bound to SnapMirror destination volumes, which are read-only; ONTAP updates them in place on the schedule, sending only the blocks that changed since the last update (see [how SnapMirror replication works](/posts/netapp-snapmirror-two-ontap-simulators-suse-virtualization/#how-snapmirror-replication-works)).
+
+Failover does not copy or convert anything:
+
+1. Stop the VM on the primary, so its disks stop changing.
+2. Run one last SnapMirror update, so DR has every block written before the stop.
+3. Break the relationship ("promote"), which turns the DR volumes into normal read-write volumes.
+4. Start the replica. KubeVirt creates the pod, attaches the now writable PVCs and boots the guest, which sees the same disks, MAC addresses and cloud-init data as on the primary.
+
+Reprotect then reverses the relationships, so the old primary becomes the read-only replica and only the changes made on DR flow back.
+
 ## Configuration
 
 ```yaml

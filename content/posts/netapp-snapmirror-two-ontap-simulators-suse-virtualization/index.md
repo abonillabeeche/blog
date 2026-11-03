@@ -44,6 +44,18 @@ ONTAP offers an active/active option, SnapMirror active sync, and the policies (
 
 Every Kubernetes-level NetApp option I found is active/passive and asynchronous: Trident volume replication (TMR), Trident Protect (`AppMirrorRelationship`) and SVM disaster recovery. The [Trident replication documentation](https://docs.netapp.com/us-en/trident/trident-use/vol-volume-replicate.html) states it directly: "Only SnapMirror asynchronous protection is supported."
 
+## How SnapMirror replication works
+
+SnapMirror replicates whole volumes between two peered ONTAP clusters, and every Trident PVC is its own volume, so every VM disk becomes its own SnapMirror relationship ([NetApp: SnapMirror asynchronous disaster recovery](https://docs.netapp.com/us-en/ontap/data-protection/snapmirror-disaster-recovery-concept.html)):
+
+1. **Baseline.** The first transfer takes a snapshot of the source volume and copies it, with every data block it references, to a destination volume of type DP (data protection), which is read-only. For the test VM's root disk that was 731 MB.
+2. **Updates.** On every tick of the schedule, ONTAP takes a new snapshot of the source and sends the difference from the last snapshot both sides already share. With the `MirrorAllSnapshots` policy, other snapshots taken since the last update travel along. Updates in the lab moved between 4 KB and 5 MB.
+3. **In between.** The destination stays exactly at its last transferred snapshot. That snapshot is the recovery point, and its age is the lag.
+4. **Failover.** Quiesce (stop scheduled transfers) and break the relationship. The DP volume becomes a normal read-write volume with the data of the last transferred snapshot.
+5. **Resync.** To replicate again in either direction, a resync uses the last common snapshot: the volume being overwritten is rolled back to it and only newer changes are sent, without a new baseline. Swapping source and destination this way is a reverse resync.
+
+This looks like changed block tracking (CBT) in VMware, but nothing runs in the hypervisor or the guest: ONTAP finds the changed blocks by comparing snapshots of the volume. In exchange, each update is a point in time rather than a continuous stream, which is why the schedule matters.
+
 ## Step 1: Build the second simulator with the second serial number
 
 A fresh simulator OVA always boots as serial number 4082368-50-7. Two clusters with the same serial and system ID are asking for trouble, and the license codes are bound to the serial. The Simulate ONTAP installation guide describes how to boot a second node with a different identity; the same works for a second single-node cluster. Stop at the `VLOADER>` prompt on the first boot (press the space bar during the countdown) and set:
