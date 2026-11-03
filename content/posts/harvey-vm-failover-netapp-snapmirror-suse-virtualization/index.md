@@ -15,7 +15,10 @@ images: ["og.jpg"]
 - A planned failover of a VM with three disks (an image-cloned root disk on iSCSI, an iSCSI data disk, an NFS data disk) took **72 to 101 seconds** end to end with **no data loss**, checked inside the guest. Failback took 75 to 95 seconds, also lossless.
 - An unplanned failover (source treated as down, no final sync) reported a worst-case data loss of 65 seconds; the guest showed 7 seconds lost on the data disks and 62 seconds on the root disk.
 - `harvey replication status` shows each disk's SnapMirror state, health, lag and recovery point; `harvey sync` keeps VM changes in step; `harvey health-check` fails when replication is unhealthy or lags too far.
-- Everything below is recorded from real runs against two clusters and two ONTAP simulators. **Update (November 3):** after NetApp's review, the lab's one-minute SnapMirror schedule is flagged as unsupported (five minutes is the minimum), and the limitations reflect their feedback.
+- Everything below is recorded from real runs against two clusters and two ONTAP simulators.
+
+> [!IMPORTANT] Update, November 3
+> After NetApp's review, the lab's one-minute SnapMirror schedule is flagged as unsupported (five minutes is the minimum), and the limitations reflect their feedback.
 
 Storage replication only gets you half of a VM failover. The DR site also needs the VM: its CPU and memory, its disks wired to the right PVCs, its cloud-init data, its networks, and something that stops it in one place and starts it in the other in the right order. [The storage half](/posts/netapp-snapmirror-two-ontap-simulators-suse-virtualization/) covers two peered ONTAP simulators and Trident volume replication. This post is the other half: Harvey, which I first wrote as a stop-on-one-cluster, start-on-the-other tool and have now rebuilt around SnapMirror.
 

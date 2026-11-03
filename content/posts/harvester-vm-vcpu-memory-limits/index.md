@@ -201,6 +201,9 @@ Two more questions came up alongside these — maximum hosts and maximum worker 
 | Max memory, `host-passthrough` | 8 TiB confirmed booting, 16 TiB theoretical | CPU `phys-bits` ÷ KubeVirt's 4× `maxmem` multiplier |
 | Large-memory VM firmware | UEFI required above ~1 TiB | Legacy BIOS hangs building the memory map |
 
-ARM64's 512-vCPU number deserves the most planning attention if you're sizing large VMs on Ampere hardware — it's fixed and will bite a database or Kubernetes-in-Kubernetes node that wants more than 512 vCPUs, regardless of how big the physical hosts are. Memory story is more forgiving than it first looks: the ~900 GiB wall most people will hit by default isn't a hardware fact, it's two tunable settings (`overcommit-config` and `cpu.model`) away from a VM that can use most of what a real server has installed.
+> [!WARNING] ARM64 VMs stop at 512 vCPUs
+> ARM64's 512-vCPU number deserves the most planning attention if you're sizing large VMs on Ampere hardware — it's fixed and will bite a database or Kubernetes-in-Kubernetes node that wants more than 512 vCPUs, regardless of how big the physical hosts are.
+
+Memory story is more forgiving than it first looks: the ~900 GiB wall most people will hit by default isn't a hardware fact, it's two tunable settings (`overcommit-config` and `cpu.model`) away from a VM that can use most of what a real server has installed.
 
 What's next: I'm filing a short docs PR against Harvester's [Virtual Machines](https://docs.harvesterhci.io/v1.9/vm/virtual-machines/) page with these tested numbers, since none of this is currently documented.

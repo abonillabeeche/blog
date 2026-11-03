@@ -88,8 +88,11 @@ matches SUSE's documented GPU Operator setup on RKE2:
 - The NVIDIA Container Toolkit pointed at **RKE2's own containerd socket**.
 
 I validated it on three Ampere Altra nodes running SLES 16 and RKE2 with NVIDIA A2
-GPUs. Note that AICR marks RKE2 recipes as **Preview**: an early-adopter path, not yet
-fully qualified for production support.
+GPUs.
+
+> [!NOTE] RKE2 recipes are in Preview
+> AICR marks RKE2 recipes as **Preview**: an early-adopter path, not yet fully qualified
+> for production support.
 
 ## NVSentinel and GPU Operator fixes
 

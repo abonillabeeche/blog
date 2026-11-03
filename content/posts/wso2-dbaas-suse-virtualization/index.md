@@ -109,8 +109,11 @@ spec:
 ```
 
 My instance reached `available` in about 100 seconds. Classes range from `db.t3.micro`
-to `db.r5.2xlarge` (8 vCPU, 64 GiB). Set `engineVersion` to choose the PostgreSQL major
-version; it can't change after creation.
+to `db.r5.2xlarge` (8 vCPU, 64 GiB).
+
+> [!WARNING] Pick the PostgreSQL version up front
+> Set `engineVersion` to choose the PostgreSQL major version; it can't change after
+> creation.
 
 ```bash
 kubectl get dbinstances

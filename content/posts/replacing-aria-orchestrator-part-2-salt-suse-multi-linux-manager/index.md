@@ -319,7 +319,8 @@ On first boot, cloud-init does three things:
 - **Repositories**: disables the image's own openSUSE repositories and sets `solver.allowVendorChange`, so Leap accepts packages from the SLES 16.1 channel.
 - **Bootstrap**: runs the documented `curl … | /bin/bash` command, which registers the VM with activation key `1-wordpress`.
 
-Note that the documented command uses `curl -k`, which skips certificate verification. That is acceptable in a lab with a self-signed server certificate; in production, use a certificate the guests trust, or add the server's CA to the image.
+> [!WARNING] curl -k skips certificate verification
+> The documented command uses `curl -k`, which skips certificate verification. That is acceptable in a lab with a self-signed server certificate; in production, use a certificate the guests trust, or add the server's CA to the image.
 
 The VM itself is a Part 1 manifest (hot-plug shape, pinned MAC) that references that secret, and a NodePort Service publishes port 80:
 

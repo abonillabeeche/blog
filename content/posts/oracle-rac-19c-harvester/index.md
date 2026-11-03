@@ -185,9 +185,10 @@ installing the base release on OL8 needs a few workarounds:
 None of these are caused by Harvester. A matched pairing, 19c with a current Release Update or a newer Oracle release
 on its certified OS, installs without them.
 
-Two choices in this setup are lab shortcuts, not recommendations: one SCAN IP instead of three in DNS, and the
-interconnect on the same VLAN as the public network (which is also why the jumbo-frame check fails). In production,
-put the interconnect on its own Harvester VM network.
+> [!NOTE] Lab shortcuts, not recommendations
+> Two choices in this setup are lab shortcuts: one SCAN IP instead of three in DNS, and the
+> interconnect on the same VLAN as the public network (which is also why the jumbo-frame check fails). In production,
+> put the interconnect on its own Harvester VM network.
 
 ## Takeaways
 

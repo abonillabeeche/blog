@@ -116,8 +116,11 @@ Two more files complete the set:
 - **`build-answerfile.py`** builds a self-contained file from a base answer file and
   `bootstrap.ps1`. You need it only after editing either one, or to change the edition.
 
-Windows 11 is experimental because `sysprep` hangs on `Sysprep_Clean_Validate_Opk` in
-about half of my runs; the install itself completes. Use the `coriolis` files to build a
+> [!NOTE] Windows 11 is experimental
+> `sysprep` hangs on `Sysprep_Clean_Validate_Opk` in about half of my runs; the install
+> itself completes.
+
+Use the `coriolis` files to build a
 worker image for [Coriolis](https://cloudbase.it/coriolis/) migrations into SUSE
 Virtualization: they add a WinRM HTTPS listener and make Cloudbase-Init create the user
 that Coriolis sends. A real VMware-to-SUSE Virtualization migration passed its worker
