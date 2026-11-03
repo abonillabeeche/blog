@@ -15,7 +15,7 @@ images: ["og.jpg"]
 - A planned failover of a VM with three disks (an image-cloned root disk on iSCSI, an iSCSI data disk, an NFS data disk) took **72 to 101 seconds** end to end with **no data loss**, checked inside the guest. Failback took 75 to 95 seconds, also lossless.
 - An unplanned failover (source treated as down, no final sync) reported a worst-case data loss of 65 seconds; the guest showed 7 seconds lost on the data disks and 62 seconds on the root disk.
 - `harvey replication status` shows each disk's SnapMirror state, health, lag and recovery point; `harvey sync` keeps VM changes in step; `harvey health-check` fails when replication is unhealthy or lags too far.
-- Everything below is recorded from real runs against two clusters and two ONTAP simulators.
+- Everything below is recorded from real runs against two clusters and two ONTAP simulators. **Update (November 3):** after NetApp's review, the lab's one-minute SnapMirror schedule is flagged as unsupported (five minutes is the minimum), and the limitations reflect their feedback.
 
 Storage replication only gets you half of a VM failover. The DR site also needs the VM: its CPU and memory, its disks wired to the right PVCs, its cloud-init data, its networks, and something that stops it in one place and starts it in the other in the right order. [The storage half](/posts/netapp-snapmirror-two-ontap-simulators-suse-virtualization/) covers two peered ONTAP simulators and Trident volume replication. This post is the other half: Harvey, which I first wrote as a stop-on-one-cluster, start-on-the-other tool and have now rebuilt around SnapMirror.
 
@@ -43,7 +43,7 @@ clusters:
 defaults: {source: primary, destination: dr}
 replication:
   policy: MirrorAllSnapshots              # asynchronous SnapMirror policy
-  schedule: harvey-1min                   # ONTAP schedule on both clusters: every minute
+  schedule: 5min                          # ONTAP schedule; 5 minutes is NetApp's supported minimum
   max_lag_seconds: 600                    # health-check threshold
 ```
 
@@ -66,7 +66,7 @@ My test VM runs openSUSE Leap 16.0 from an image on a NetApp iSCSI StorageClass,
 
 ![Recorded terminal session: harvey replication status shows three volumes snapmirrored with seconds of lag; a kubectl annotate on the primary VM is pushed to the stopped replica with harvey sync; harvey health-check passes](harvey-status-sync.gif)
 
-`harvey replication status` reads lag and the recovery point straight from ONTAP. Lag is the age of the newest replicated snapshot, which is the most data you would lose if the primary site failed at that moment. With a one-minute schedule it stayed between 7 and 41 seconds.
+`harvey replication status` reads lag and the recovery point straight from ONTAP. Lag is the age of the newest replicated snapshot, which is the most data you would lose if the primary site failed at that moment. With the one-minute schedule I used in the lab it stayed between 7 and 41 seconds. NetApp supports five minutes as the minimum schedule, so expect up to about five minutes in a supported setup (see [the storage post](/posts/netapp-snapmirror-two-ontap-simulators-suse-virtualization/#what-netapp-said)). Five minutes is comfortable for a handful of volumes on a quiet array. At scale, remember that Harvey creates one SnapMirror relationship per VM disk: an array can hold a relationship for every volume (up to 5,000), but it runs only 100 or 250 transfers at the same time, depending on the platform, so with hundreds of disks on a busy system transfers queue and lag grows.
 
 `harvey sync` copies the VM definition and everything it references from whichever side is currently primary. Run it from cron, or as `harvey sync --watch 300`, so that a CPU, memory or cloud-init change made on the primary is already on the DR side when you need it. Replicas always stay stopped.
 
@@ -129,16 +129,20 @@ A full plan cycle with hooks took 97 seconds for the failover and 75 seconds for
 | Planned failover, primary → DR | 3 | 72–101 s | none (checked in the guest) |
 | Failback, DR → primary | 4 | 75–95 s | none (checked in the guest) |
 | Unplanned failover | 1 | promote + start | reported ≤ 65 s; measured 7 s (data disks), 62 s (root disk) |
-| Steady-state lag, one-minute schedule | 51 samples | 7–41 s | — |
+| Steady-state lag, one-minute lab schedule (not supported by NetApp; minimum is 5 min) | 51 samples | 7–41 s | — |
 
 Final SnapMirror updates took 6 to 15 seconds per volume and promotes about 10 seconds per volume, run one volume at a time. Running them in parallel is the obvious next speed-up.
 
 ## Limitations
 
-- **Asynchronous only.** Trident replicates with asynchronous SnapMirror policies, so an unplanned failover loses up to the schedule interval plus transfer time.
-- **Per-disk consistency.** After an unplanned failover, the disks of one VM can come from slightly different points in time (55 seconds apart in my test). Planned failovers are not affected.
-- **Trident promote check.** Harvey verifies every promotion in ONTAP because Trident 26.06 can report a mirror as promoted while the volume is still read-only; details are in [the storage post](/posts/netapp-snapmirror-two-ontap-simulators-suse-virtualization/).
+- **Asynchronous only.** Trident replicates with asynchronous SnapMirror policies, so an unplanned failover loses up to the schedule interval plus transfer time. NetApp's supported minimum schedule is five minutes; my lab ran one minute. Synchronous SnapMirror has no Trident integration by design; NetApp points customers who need zero data loss to MetroCluster.
+- **Per-disk consistency.** After an unplanned failover, the disks of one VM can come from slightly different points in time (55 seconds apart in my test). Planned failovers are not affected. Trident's VolumeGroupSnapshot gives crash-consistent groups, but according to NetApp it does not work with replication yet.
+- **Trident promote check.** Harvey verifies every promotion in ONTAP because Trident 26.06 can report a mirror as promoted while the volume is still read-only; details are in [the storage post](/posts/netapp-snapmirror-two-ontap-simulators-suse-virtualization/). NetApp has not seen it in support cases and is trying to reproduce it.
 - **DR test mode** (`plan run --test`) boots copies of the VM definitions in shadow namespaces but does not clone the replica volumes yet. ONTAP FlexClones of the destination volumes would make it a real non-disruptive test.
+
+## Harvey and Trident Protect
+
+NetApp's own answer to the same problem is [Trident Protect](https://docs.netapp.com/us-en/trident/trident-protect/trident-protect-kubevirt-vms.html): its `AppMirrorRelationship` replicates both the volumes and the application metadata (through an S3 bucket) and fails the VM over by promoting the relationship. NetApp has described it for [OpenShift Virtualization](https://community.netapp.com/t5/Tech-ONTAP-Blogs/OpenShift-Virtualization-Disaster-Recovery-with-NetApp-Trident-Protect/ba-p/460716), and Yves at NetApp has a [KubeVirt scenario](https://github.com/YvosOnTheHub/LabNetApp/tree/master/Kubernetes_v6/Trident_Protect_Scenarios/Scenario11). Harvey takes a different split: NetApp moves only the disk data, and Harvey owns the VM metadata, the ordering and the checks. I will set up Trident Protect on the same two clusters, the way NetApp recommends, in a separate post.
 
 ## Try it
 

@@ -14,12 +14,13 @@ images: ["og.jpg"]
 - I built a second ONTAP 9.16.1 simulator as a SnapMirror destination for my first one. Its license file already contains a full set of codes for a second serial number, so nothing extra was needed: change the serial and system ID at the boot loader, apply the second set of codes, and SnapMirror (including synchronous SnapMirror) is licensed.
 - Cluster peering and SVM peering took a few minutes. One trap: the peering passphrase prompt does not accept piped input over SSH, so I used the ONTAP REST API for that step.
 - Each VM disk on the primary SUSE Virtualization cluster is replicated with a Trident `TridentMirrorRelationship` (TMR) to a PVC on the DR cluster. Disks of VMs created from images are FlexClones of the image volume; SnapMirror sends them as full, independent copies, and that works.
-- With a one-minute SnapMirror schedule the DR copy ran **7 to 41 seconds behind** in steady state (51 samples). A planned failover with a final update lost no data.
-- Gotchas: Trident replication is asynchronous only, each disk is its own consistency point, the simulator stalls transfers when it runs low on memory, and Trident 26.06 can report a mirror as promoted while ONTAP still has the volume read-only.
+- With a one-minute SnapMirror schedule the DR copy ran **7 to 41 seconds behind** in steady state (51 samples). A planned failover with a final update lost no data. NetApp's review pointed out that **five minutes is the minimum schedule NetApp supports**; one minute works but is not supported.
+- Gotchas: Trident replication is asynchronous only, each disk is its own consistency point, the simulator stalls transfers when it runs low on memory, and Trident 26.06 can report a mirror as promoted while ONTAP still has the volume read-only (NetApp is trying to reproduce that one).
+- NetApp also pointed me to **Trident Protect**, which can replicate and fail over the whole VM, metadata included. I will try it on SUSE Virtualization, configured the way NetApp recommends, in a separate post.
 
 I wanted VM disaster recovery between two [SUSE Virtualization](https://www.suse.com/products/rancher/virtualization/) (Harvester) clusters with the storage array doing the heavy lifting: replicate the disks with SnapMirror, keep a stopped copy of each VM on the DR side, and fail over in a couple of minutes. Both clusters already used NetApp Trident against an ONTAP simulator (see [NetApp Trident on SUSE Virtualization: just the YAMLs](/posts/netapp-trident-harvester-yamls/)). This post covers the storage half: a second simulator, peering, replication through Trident, and what I measured. Orchestration, done by a small CLI called Harvey that moves the VM definitions and runs failover and failback, is covered in the companion post: [VM failover and failback with Harvey and NetApp SnapMirror](/posts/harvey-vm-failover-netapp-snapmirror-suse-virtualization/).
 
-I am also sharing this with NetApp engineers; corrections will be folded in.
+**Update (November 3):** NetApp engineers reviewed this post. Their feedback is folded into the sections below and summarized in [What NetApp said](#what-netapp-said).
 
 ## Setup
 
@@ -138,7 +139,7 @@ snapmirror break      -destination-path svm_dr:smtest_dst    # failover: the DP 
 snapmirror resync     -destination-path svm_dr:smtest_dst    # re-protect
 ```
 
-Repeating it with `-policy Sync` reached `Snapmirrored`, status `InSync`, on the simulators. Synchronous replication works between the two clusters; Trident just cannot drive it.
+Repeating it with `-policy Sync` reached `Snapmirrored`, status `InSync`, on the simulators. Synchronous replication works between the two clusters, but Trident does not manage it: NetApp has deliberately not integrated SnapMirror synchronous or active sync with Trident yet. For zero data loss with automatic failover, NetApp's usual answer is MetroCluster, which mirrors and fails over transparently below the hosts.
 
 One cleanup lesson: release the relationship on the **source** (`snapmirror release`) before deleting the destination volume. Otherwise the source keeps a stale destination entry and refuses to delete the volume; `snapmirror release -relationship-info-only true` clears it, and only while the volume is online.
 
@@ -217,6 +218,8 @@ Lag is the age of the newest snapshot that reached the destination, so it is als
 
 Scheduled transfers for this light workload took a few seconds each (for example, 4.09 MB in 8 s). With a one-minute schedule the worst case is roughly one minute plus the transfer time; with the built-in `5min` schedule, expect up to five minutes plus transfer time. A planned failover stops the VM first and then runs one more update per disk, which took 6 to 15 seconds per volume here, so nothing is lost.
 
+**Use five minutes, not one.** NetApp supports five minutes as the minimum SnapMirror schedule; one minute works, as above, but is not supported. Even five minutes deserves care on a busy array: every volume can have a SnapMirror relationship (up to 5,000 volumes per system), but only 100 or 250 transfers run concurrently, depending on the platform. A handful of volumes on a quiet system is easy; thousands of volumes on a loaded one is not. My one-minute lab schedule also made the simulator's memory problems and the promote race below more likely.
+
 ## Gotchas
 
 **Trident marks a mirror promoted while ONTAP still has it read-only.** With Trident 26.06.1 and ONTAP 9.16.1, I saw a destination TMR reach status `promoted` while the volume was still a DP (read-only) volume. The VM then failed to start with `AttachVolume.Attach failed ... volume is not read-write`. It happened in two situations:
@@ -224,9 +227,9 @@ Scheduled transfers for this light workload took a few seconds each (for example
 - A scheduled transfer was running when the promote arrived. Trident logged `Snapmirror break failed: snapmirror transfer already in progress`, requeued, and still reported `promoted`.
 - A relationship that was already quiesced (paused) before the promote. Trident set `promoted` without breaking it.
 
-Harvey's workaround: abort a running transfer before promoting, then check the volume type through the ONTAP REST API (`GET /api/storage/volumes?fields=type`) and, if it is still `dp`, quiesce and break the relationship directly (`PATCH /api/snapmirror/relationships/{uuid}` with `state: paused`, then `broken_off`). With a one-minute schedule a transfer is running a good part of the time, so this matters.
+NetApp had not seen this in support cases and is trying to reproduce it. Harvey's workaround: abort a running transfer before promoting, then check the volume type through the ONTAP REST API (`GET /api/storage/volumes?fields=type`) and, if it is still `dp`, quiesce and break the relationship directly (`PATCH /api/snapmirror/relationships/{uuid}` with `state: paused`, then `broken_off`). With a one-minute schedule a transfer is running a good part of the time, so this matters.
 
-**Each disk is its own consistency point.** Every PVC is a separate relationship on its own schedule. In an unplanned failover test, the data disks of one VM came back from 03:56:57 and the root disk from 03:56:02. A planned failover is not affected because the VM is stopped before the final update. ONTAP consistency groups would solve this, but Trident TMRs do not use them.
+**Each disk is its own consistency point.** Every PVC is a separate relationship on its own schedule. In an unplanned failover test, the data disks of one VM came back from 03:56:57 and the root disk from 03:56:02. A planned failover is not affected because the VM is stopped before the final update. In Trident, crash-consistent groups of volumes come from the VolumeGroupSnapshot functionality, but according to NetApp that does not work together with replication yet.
 
 **Simulator memory.** With 6 GB of RAM the primary simulator served three Kubernetes clusters and logged `wafl.memory.statusVeryLowMemory: WAFL is running very low on memory, with 27MB remaining`. Transfers then stopped making progress without failing. `snapmirror abort` followed by a new update or `snapmirror initialize` resumed them from their checkpoint. Harvey now aborts and retries a transfer that makes no progress for two minutes. A production array would not behave like this, but a lab simulator does.
 
@@ -236,11 +239,18 @@ Harvey's workaround: abort a running transfer before promoting, then check the v
 
 - Two ONTAP simulators are enough to build and test SnapMirror-based VM disaster recovery end to end, licensing included.
 - Trident TMRs give you mirrored PVCs on the DR cluster that behave like any other PVC after promotion. The VM definitions, Secrets and networks still have to get there some other way; that is what Harvey does.
-- With a one-minute schedule the DR copy stays well under a minute behind for a light workload, and planned failovers are lossless.
+- With a one-minute schedule the DR copy stayed well under a minute behind for a light workload, and planned failovers were lossless. For anything beyond a lab, use NetApp's supported minimum of five minutes and keep the concurrent-transfer limit in mind.
 - Verify promotions in ONTAP rather than trusting the TMR status alone.
+- Trident Protect is NetApp's own way to cover the whole workflow; I will set it up the way NetApp's documentation recommends in a separate post.
 
-## Open questions for NetApp
+## What NetApp said
 
-- Is the promote behavior above known, and is there a recommended way to promote while a scheduled transfer may be running?
-- Is a one-minute schedule reasonable for asynchronous SnapMirror on real arrays, or is five minutes the practical floor?
-- Is there a path to consistency groups or synchronous SnapMirror for Trident-managed volumes?
+I sent this post to NetApp engineers for review. In short:
+
+- **Schedule:** five minutes is the minimum NetApp supports for asynchronous SnapMirror. One minute works but is not supported, and on a loaded array with many volumes even five minutes needs care, because only 100 or 250 transfers run concurrently, depending on the platform.
+- **Synchronous and active sync:** there is no Trident integration (yet), by design. Customers who need that usually get MetroCluster, which does the mirroring and failover automatically and transparently.
+- **Consistency groups:** covered in Trident by the VolumeGroupSnapshot functionality, which does not yet work in combination with replication.
+- **Promote quirk:** not a known issue and not seen in support cases; NetApp support is trying to reproduce it.
+- **Trident Protect:** it can cover the whole workflow, including the VM failover, without an additional orchestration tool. NetApp has written about it for [OpenShift Virtualization](https://community.netapp.com/t5/Tech-ONTAP-Blogs/OpenShift-Virtualization-Disaster-Recovery-with-NetApp-Trident-Protect/ba-p/460716), and Yves at NetApp has a [KubeVirt scenario](https://github.com/YvosOnTheHub/LabNetApp/tree/master/Kubernetes_v6/Trident_Protect_Scenarios/Scenario11) in his lab repository. It should work on SUSE Virtualization too; I will cover that in a separate post.
+
+Thanks to the NetApp team for the quick and candid review.
