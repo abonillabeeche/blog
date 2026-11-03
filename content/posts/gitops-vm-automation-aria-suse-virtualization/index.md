@@ -592,4 +592,4 @@ Who asked, who approved, what changed and when are all in the PR, its checks and
 
 ## What's next: part 2
 
-VM shape is only half of what Aria-based automation usually does. Part 2 moves inside the guest: SUSE Multi-Linux Manager managing the applications on these VMs with Salt, re-using Salt code from existing Aria-driven apps, plus repos and patching. A SUSE Multi-Linux Manager 5.2 server already runs as a VM on the same SUSE Virtualization cluster, deployed from the official qcow2 image.
+VM shape is only half of what Aria-based automation usually does. [Part 2: reusing Salt states with SUSE Multi-Linux Manager](/posts/replacing-aria-orchestrator-part-2-salt-suse-multi-linux-manager/) moves inside the guest: the Salt state from an Aria WordPress blueprint runs unchanged from SUSE Multi-Linux Manager, a VM bootstraps itself with cloud-init on SUSE Virtualization, and day-2 changes and drift correction are handled with highstates.
