@@ -1,0 +1,14 @@
+{{- /* Site override of PaperMod's edit_post: "Report an issue / comment" link
+       on every post, opening a GitHub issue prefilled with the post title + URL. */ -}}
+{{- if and (eq .Section "posts") .IsPage (not (.Param "hideIssueLink")) -}}
+    {{- $repo := site.Params.issueRepo | default "https://github.com/abonillabeeche/blog" -}}
+    {{- $title := printf "[%s] " .Title -}}
+    {{- $body := printf "**Post:** [%s](%s)\n\n**Section or step (optional):**\n\n**What's wrong, or your comment:**\n\n" .Title .Permalink -}}
+    {{- $url := printf "%s/issues/new?title=%s&body=%s" $repo (querify "t" $title | strings.TrimPrefix "t=") (querify "b" $body | strings.TrimPrefix "b=") -}}
+    <span class="post-issue-link">
+        <a href="{{ $url }}" rel="noopener noreferrer" target="_blank" title="Open a GitHub issue about this post">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            Report an issue / comment
+        </a>
+    </span>
+{{- end }}

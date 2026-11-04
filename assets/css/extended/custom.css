@@ -47,3 +47,14 @@
 [data-theme="dark"] .post-content blockquote.callout-important { --c: #b392f0; }
 [data-theme="dark"] .post-content blockquote.callout-warning   { --c: #e3a83a; }
 [data-theme="dark"] .post-content blockquote.callout-caution   { --c: #ff7b72; }
+
+/* "Report an issue / comment" link in the post header (layouts/_partials/edit_post.html) */
+.post-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 0 4px; }
+.post-issue-link { margin-left: auto; }
+.post-issue-link a {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 3px 10px; border: 1px solid var(--border); border-radius: 999px;
+  font-size: 13px; color: var(--secondary); text-decoration: none;
+}
+.post-issue-link a:hover { color: var(--primary); border-color: var(--primary); }
+@media (max-width: 600px) { .post-issue-link { margin-left: 0; margin-top: 6px; flex-basis: 100%; } }
