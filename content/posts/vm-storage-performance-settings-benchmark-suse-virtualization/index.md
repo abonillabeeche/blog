@@ -7,6 +7,8 @@ summary: "I benchmarked every VM disk performance setting SUSE Virtualization 1.
 images: ["og.jpg"]
 ---
 
+![Infographic summarizing the results: the High Performance profile cuts local write latency from 90 to 54 µs and raises sync writes from 4,502 to 7,421 IOPS; supplementalPool raises 4K random reads from 95K to 226K IOPS on local LVM and from 27.5K to 49.7K on Ceph; host page-cache modes cost about 30% of random reads and over half of sequential writes locally, and Ceph writeback cuts sequential writes by 82%](storage-performance-benchmark.jpg)
+
 **TL;DR**
 
 - **High Performance adds one thing to Default, and it pays off.** On block volumes,
@@ -28,8 +30,6 @@ images: ["og.jpg"]
   stops the VM from starting.
 - **`blockMultiQueue` and `ioThreadsPolicy: auto`** changed almost nothing in these tests,
   and the guest already gets one queue per vCPU without `blockMultiQueue`.
-
-![Infographic summarizing the results: the High Performance profile cuts local write latency from 90 to 54 µs and raises sync writes from 4,502 to 7,421 IOPS; supplementalPool raises 4K random reads from 95K to 226K IOPS on local LVM and from 27.5K to 49.7K on Ceph; host page-cache modes cost about 30% of random reads and over half of sequential writes locally, and Ceph writeback cuts sequential writes by 82%](storage-performance-benchmark.jpg)
 
 SUSE Virtualization (Harvester) 1.9.1 adds the KubeVirt high-performance disk settings to
 the VM editor ([harvester#11550](https://github.com/harvester/harvester/issues/11550)):
