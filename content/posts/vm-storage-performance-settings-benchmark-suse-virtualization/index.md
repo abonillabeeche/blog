@@ -269,6 +269,13 @@ reservations), not for speed.
 
 ## Thanks
 
-Thanks to [Justin Huang](https://github.com/asc5543) for testing the UI so thoroughly,
-and to [Jack Yu](https://github.com/Yu-Jack) and [Andy Lee](https://github.com/a110605)
-for reviewing it.
+This feature had a lot of hands on it. Thanks to
+[Vicente Cheng](https://github.com/Vicente-Cheng) for triaging the issue and merging the
+UI, [Jack Yu](https://github.com/Yu-Jack) and [Andy Lee](https://github.com/a110605) for
+reviewing it, [Volker Theile](https://github.com/votdev) for the UX feedback, and
+[Marcelo Fukumoto](https://github.com/marcelofukumoto) for reviewing the follow-up fix.
+[Justin Huang](https://github.com/asc5543) tested it thoroughly and found the issues that
+fix addressed. On the documentation, thanks to [Ivan Sim](https://github.com/ihcsim),
+[Alexandra Settle](https://github.com/asettle) and
+[Po Han Huang](https://github.com/pohanhuang), and to
+[Khushboo](https://github.com/khushboo-rancher) for reviewing the regression tests.
