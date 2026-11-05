@@ -17,7 +17,8 @@ images: ["og.jpg"]
 - **A supplemental I/O thread pool multiplies random-read IOPS.** With
   `ioThreadsPolicy: supplementalPool`, one disk's queues spread over several I/O threads:
   4K random reads went from 95k to **226k IOPS** (2.4×) on local storage and from
-  27.5k to **49.7k IOPS** (1.8×) on Ceph.
+  27.5k to **49.7k IOPS** (1.8×) on Ceph. Four threads was the sweet spot on an 8-vCPU
+  VM; eight was worse.
 - **Host page-cache modes hurt on fast storage.** `cache: writethrough` and
   `cache: writeback` cut random-read IOPS by about 30% and sequential writes by more than
   half on local LVM. On Ceph, writeback acknowledges small writes from host RAM
@@ -27,6 +28,8 @@ images: ["og.jpg"]
   stops the VM from starting.
 - **`blockMultiQueue` and `ioThreadsPolicy: auto`** changed almost nothing in these tests,
   and the guest already gets one queue per vCPU without `blockMultiQueue`.
+
+![Infographic summarizing the results: the High Performance profile cuts local write latency from 90 to 54 µs and raises sync writes from 4,502 to 7,421 IOPS; supplementalPool raises 4K random reads from 95K to 226K IOPS on local LVM and from 27.5K to 49.7K on Ceph; host page-cache modes cost about 30% of random reads and over half of sequential writes locally, and Ceph writeback cuts sequential writes by 82%](storage-performance-benchmark.jpg)
 
 SUSE Virtualization (Harvester) 1.9.1 adds the KubeVirt high-performance disk settings to
 the VM editor ([harvester#11550](https://github.com/harvester/harvester/issues/11550)):
@@ -68,8 +71,10 @@ The `fio` jobs (direct I/O, `libaio`, 30 s each after a 5 s ramp, on the raw dev
 | 4K random 70/30 read/write, QD16 × 8 jobs | mixed workload |
 | 1 MiB sequential read and write, QD8 × 2 jobs | backup, streaming, bulk copy |
 
-Each setting ran three times on each backend (one ran twice), rotating the order between rounds, and
-the tables show the median.
+Each setting ran three times on each backend, rotating the order between rounds, and the
+tables show the median. A fourth round of the key settings on local LVM (Default, High
+Performance, `supplementalPool` and `writeback`) landed within a few percent of these
+medians.
 
 ## Results: local LVM
 
@@ -80,7 +85,7 @@ the tables show the median.
 | `cache: writethrough` | 183 (+26%) | 261 (+189%) | 3,289 (-27%) | 67,852 (-29%) | 35,405 (-33%) | 67,838 (-23%) | 1,427 (-32%) | 504 (-64%) |
 | `cache: writeback` | 189 (+30%) | 91 (+1%) | 3,200 (-29%) | 68,294 (-28%) | 59,977 **(+13%)** | 82,346 (-7%) | 1,419 (-33%) | 582 (-59%) |
 | High Performance | 97 **(-33%)** | 54 **(-40%)** | 7,421 **(+65%)** | 93,495 (-2%) | 56,279 **(+6%)** | 94,540 **(+7%)** | 2,107 (+0%) | 1,111 (-22%) |
-| HP + multi-queue | 93 **(-36%)** | 54 **(-40%)** | 7,233 **(+61%)** | 99,094 (+4%) | 56,976 **(+7%)** | 92,777 (+5%) | 2,086 (-1%) | 1,351 (-5%) |
+| HP + multi-queue | 95 **(-35%)** | 54 **(-40%)** | 7,282 **(+62%)** | 98,319 (+3%) | 56,777 **(+7%)** | 92,325 (+4%) | 2,090 (-1%) | 1,345 (-5%) |
 | HP + policy `auto` | 101 **(-31%)** | 54 **(-41%)** | 7,337 **(+63%)** | 100,443 **(+5%)** | 56,632 **(+7%)** | 91,782 (+4%) | 2,093 (-0%) | 1,244 (-12%) |
 | HP + `supplementalPool` ×4 | 97 **(-33%)** | 54 **(-41%)** | 7,321 **(+63%)** | 226,267 **(+137%)** | 57,075 **(+7%)** | 99,219 **(+12%)** | 2,094 (-0%) | 1,335 (-6%) |
 | `bus: scsi` | 138 (-5%) | 91 (+1%) | 4,533 (+1%) | 77,473 (-19%) | 55,804 (+5%) | 76,437 (-14%) | 2,093 (-0%) | 1,296 (-9%) |
@@ -206,6 +211,26 @@ thread (policy *Shared*). For the pool, also open the VM-wide **High Performance
 Threads and Multi-Queue)** panel, set **I/O Threads Policy** to *Supplemental Pool* and
 choose the **I/O Thread Count**.
 
+### How many threads?
+
+More threads didn't keep helping. I ran the pool with 2, 4 and 8 threads on the same
+8-vCPU VM (one run each, so treat these as a direction rather than exact numbers):
+
+| Pool threads | Local 4K read IOPS | Local 70/30 IOPS | Ceph 4K read IOPS | Ceph QD1 write |
+|---|--:|--:|--:|--:|
+| 1 (High Performance only) | 93k | 95k | 28.0k | 1.78 ms |
+| 2 | 170k | 119k | 33.6k | 1.86 ms |
+| **4** | **226k** | 99k | **49.7k** | **1.73 ms** |
+| 8 | 160k | 76k | 32.4k | 3.23 ms |
+
+Four threads was the best overall on both backends. Eight threads, as many as the VM has
+vCPUs, gave back most of the gain, cut the mixed workload below Default on local storage
+and nearly doubled QD1 write latency on Ceph. Two threads won the mixed workload on local
+storage, so for a write-heavy disk 2 is worth trying too.
+
+Without the per-disk dedicated-thread flag, the pool still works: on local LVM the result
+was the same, but on Ceph it reached +55% instead of +80%. Keep both on.
+
 Each thread in the pool can use a host core when the disk is busy, so count them like
 vCPUs when you size the node.
 
@@ -234,8 +259,9 @@ reservations), not for speed.
   on local storage.
 - **Default is a sound baseline for everything else.** On block volumes it already uses
   the uncached native path, so general-purpose VMs aren't leaving much on the table.
-- **Add `supplementalPool` for disks that need IOPS** (4 threads in these tests), and
-  budget the host cores for it.
+- **Add `supplementalPool` for disks that need IOPS.** Start with 4 threads, or about
+  half the VM's vCPUs; going up to the full vCPU count made things worse. Budget the host
+  cores for it.
 - **Avoid `writethrough`.** Consider `writeback` only for workloads with many small,
   unflushed writes, after measuring.
 - **Don't expect VM settings to raise the storage's ceiling.** If every row in a column
