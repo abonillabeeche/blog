@@ -7,7 +7,7 @@ summary: "Architecture and implementation of a three-node SUSE Virtualization cl
 images: ["og.jpg"]
 ---
 
-[![Infographic: AI web app on Vultr bare metal. Layer 1, three Vultr bare-metal servers with OS plus Longhorn and a dedicated Portworx disk on a Vultr VPC with a Kube-OVN overlay; layer 2, SUSE Virtualization with the RKE2 guest cluster and three NVIDIA A16 GPU VMs; layer 3, the SUSE AI Factory blueprint with Open WebUI, a round-robin router and vLLM engines; Portworx DR to an on-premises cluster; cost about $3.09 per hour](hero.jpg)](hero-full.jpg "Open full size")
+[![Infographic with Harvey the mascot (in his miner's hard hat and safety gear) next to the SUSE chameleon: AI web app on Vultr bare metal. Layer 1, three Vultr bare-metal servers with OS plus Longhorn and a dedicated Portworx disk on a Vultr VPC with a Kube-OVN overlay; layer 2, SUSE Virtualization with the RKE2 guest cluster and three NVIDIA A16 GPU VMs; layer 3, the SUSE AI Factory blueprint with Open WebUI, a round-robin router and vLLM engines; Portworx DR to an on-premises cluster; cost about $3.09 per hour](hero.jpg)](hero-full.jpg "Open full size")
 
 **TL;DR**
 
@@ -425,10 +425,11 @@ $ harvey failback px-demo-1 -n harvey-px-demo -y
 
 Across one full round trip, 366 timestamps written from on-premises to Vultr and back showed only the two planned outage gaps (94 s and 135 s of wall-clock time), with no writes lost.
 
-Points worth knowing before relying on this:
+Points worth knowing before relying on this (also in harvey's [Portworx notes](https://github.com/abonillabeeche/harvey/blob/main/docs/portworx.md#stork-behaviour-to-know-about-seen-with-stork-2642)):
 
-- **Reverse migrations copy everything.** Portworx restores into a new volume (new ID, same name) and deletes the old one, so a reprotect after failover is a full copy (about 736 MB here), not a delta.
+- **Reverse migrations copy everything.** Portworx restores into a new volume (new ID, same name) and deletes the old one, so the first migration after a failover is a full copy (about 736 MB here). Later scheduled migrations in the new direction are incremental again.
 - **Stork's KubeVirt cleanup can delete the replica VM.** After a failback, Stork 26.4 sees a volume-handle mismatch on the old PVs and removes them, together with any VM that uses them. It then expects the migration's included resources to recreate the VM. harvey runs volume-only migrations and re-syncs the VM spec right afterwards, so the VM comes back stopped. A plain volume-only Stork setup would lose the VM object.
+- **"0 B" in the final sync is expected.** Stork reports a byte count only for full copies; incremental migrations, including the final sync in the failover output above, show 0 bytes even when they carried data.
 - **Measure unplanned RPO from the trigger time.** Stork's PVC annotation `stork.libopenstorage.org/migrationTime` records when the migration was *applied*, which under-reported the loss in this test (43 s against 151 s real). Use the trigger time encoded in the migration name instead.
 - **Split-brain protection uses Stork's own flag.** On failover, harvey marks the VM active on the destination with the same mechanism `storkctl perform failover` uses, which is why the returning site's schedule suspends itself.
 
