@@ -7,6 +7,8 @@ summary: "A copy-paste version of my Harvester knowledge base article on NetApp 
 images: ["og.jpg"]
 ---
 
+![Infographic summarizing the NetApp Trident on SUSE Virtualization setup: Harvey the mascot and the SUSE chameleon next to a numbered pipeline from storage network and multipathd through Trident backends, StorageClasses, online volume expansion, and verification against a NetApp ONTAP system](hero.jpg)
+
 > [!NOTE] Short version
 > This post keeps only the manifests and commands. For the full
 > explanation, including network design, witness nodes, Fibre Channel notes and
@@ -23,9 +25,18 @@ images: ["og.jpg"]
 > one of these on the lab cluster before changing anything here; both this post and the
 > knowledge base article below now reflect the corrected manifests.
 
+> [!IMPORTANT] Update, 2026-11-07
+> "Online expansion worked" below was true but incomplete: it only works after you allow
+> it in a Harvester setting. Without that change, expanding a volume on
+> `csi.trident.netapp.io` while its VM is running fails with `PVC_EXPAND: pvc
+> <namespace>/<name> is not online expandable with its provider`, because
+> `csi-online-expand-validation` only allows `driver.longhorn.io` to expand online by
+> default. Added step 7 below with the fix, re-verified live on the lab cluster: the PVC
+> resized from 2Gi to 3Gi with the VM still running, no restart.
+
 Tested with SUSE Virtualization (Harvester) v1.9.0, Trident 26.06.1 (Helm chart
 `100.2606.1`) and ONTAP 9.16.1. NFS, iSCSI and NVMe/TCP all support VM boot volumes,
-live migration, online expansion and VM snapshots.
+live migration, online expansion (once you allow it, see step 7) and VM snapshots.
 
 You'll need:
 
@@ -302,7 +313,23 @@ empty: in v1.9, VM backups only support Longhorn volumes, while VM snapshots wor
 }
 ```
 
-## 7. Verify
+## 7. Allow online volume expansion
+
+`csi-online-expand-validation` only allows `driver.longhorn.io` to expand a volume
+while it's attached to a running VM. Add `csi.trident.netapp.io` too, in
+**Advanced → Settings → csi-online-expand-validation** (⋮ → Edit Setting → Add), or:
+
+```bash
+kubectl patch settings.harvesterhci.io csi-online-expand-validation --type merge \
+  -p '{"value":"{\"driver.longhorn.io\":true,\"csi.trident.netapp.io\":true}"}'
+```
+
+Keep the existing `driver.longhorn.io` entry — the setting replaces its whole value,
+it doesn't merge per provisioner. Without this, resizing a PVC on a running VM's disk
+fails with `PVC_EXPAND: pvc <namespace>/<name> is not online expandable with its
+provider`, even though Trident and ONTAP support it.
+
+## 8. Verify
 
 ```bash
 kubectl get sc | grep netapp
@@ -322,6 +349,9 @@ ls /sys/class/nvme-subsystem      # on the VM's node: NVMe subsystems
   `set -privilege advanced; volume recovery-queue purge-all -vserver <svm name>`.
 - **`multipath -ll` shows local disks.** Put `98-netapp.conf` in place, run
   `multipath -F`, then restart `multipathd`.
+- **Expanding a running VM's volume fails with `PVC_EXPAND: ... is not online
+  expandable with its provider`.** Add `csi.trident.netapp.io` to
+  `csi-online-expand-validation` (step 7).
 
 For everything else, see the
 [full knowledge base article](https://harvesterhci.io/kb/install_netapp_trident_csi).
