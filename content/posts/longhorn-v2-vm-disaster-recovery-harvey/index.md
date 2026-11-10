@@ -12,7 +12,7 @@ images: ["og.jpg"]
 **TL;DR**
 
 - Disaster recovery (DR) for VMs on the Longhorn V2 (SPDK) data engine works end to end on SUSE Virtualization v1.10.0-rc1 with Longhorn 1.13.0: backups to S3, standby DR volumes on the second cluster, engine-confirmed restores.
-- A VM with three V2 disks, two NICs and a ConfigMap disk failed over in **186 s with RPO 0**, and failed back in **252 s with RPO 0**. A two-VM recovery group failed over in **266 s with RPO 0**. Timestamps written inside the guests every 5 seconds prove it.
+- A VM with three V2 disks, two NICs and a ConfigMap disk failed over in **186 s with RPO 0**, and failed back in **252 s with RPO 0**. A two-VM recovery group failed over in **249 s with RPO 0**. Timestamps written inside the guests every 5 seconds prove it.
 - Each VM came back as itself: same machine ID, same MAC addresses, same static IP on a VLAN network that `harvey` copied along with the cloud-init Secret and the ConfigMap.
 - Final sync, not data, dominates the RTO: 13.8 MB of changes still took 137 s, because each disk runs a full backup-and-restore cycle and the disks go one after another.
 - On Longhorn 1.13.0, a V2 DR volume can turn **Faulted** when its restore hits a backup-store lock ([longhorn#14085](https://github.com/longhorn/longhorn/issues/14085)). **Longhorn 1.13.1** (and 1.12.2) ships the fix. Until then, keep more backups so the recurring job doesn't prune during restores.
@@ -94,20 +94,9 @@ $ harvey protect -n lhv2-dr-demo --group lhv2-stack --wait
 
 `harvey` reports a DR volume as "up to date" only when the **engine** reports the backup as restored, not just when the volume says it should be.
 
-```console
-$ harvey replication status -n lhv2-dr-demo
-VM / direction / state          Volume           State                Replication  Healthy  Lag    Recovery point
-lhv2-dr-demo/lhv2-app-1         lhv2-app-1-root  backup/5m→standby    up to date   yes      4m46s  01:35:01
-primary → dr                    lhv2-app-1-data  backup/5m→standby    up to date   yes      4m02s  01:35:47
-Running / Stopped               lhv2-app-1-logs  backup/5m→standby    up to date   yes      3m46s  01:36:05
-lhv2-dr-demo/lhv2-stack         lhv2-db-1-root   backup/5m→standby    up to date   yes      2m49s  01:37:05
-(group: lhv2-db-1, lhv2-web-1)  lhv2-db-1-db     backup/5m→standby    up to date   yes      2m07s  01:37:50
-primary → dr                    lhv2-web-1-root  backup/5m→standby    up to date   yes      113s   01:38:05
-Running / Stopped               lhv2-archive     backup/5m→standby    up to date   yes      43s    01:39:15
-Worst lag: 4m46s
-```
+![Terminal output of harvey replication status: seven Longhorn V2 volumes of lhv2-app-1 and of the recovery group lhv2-stack replicating primary to dr, all up to date and healthy, worst lag about five minutes](status.svg)
 
-All seven V2 DR volumes restored: the step that never finished on v1.9.0.
+All seven V2 DR volumes are restored and confirmed by the engine: the step that never finished on v1.9.0.
 
 ## Step 4: Planned failover
 
@@ -211,33 +200,39 @@ marker service: active
 
 Across both moves the guest history has exactly two gaps, both outages; nothing written in between was lost.
 
-## Step 7: Fail over a recovery group by naming one member
+## Step 7: Fail over a recovery group
 
-Naming one VM of a recovery group fails over the whole group. `harvey` stops and starts the members by priority (the database starts first) and syncs every disk, including the standalone PVC:
+Name the group, and `harvey` moves all of it: it stops and starts the members by `failover-priority` (the database starts first) and syncs every disk, including the standalone PVC.
 
-![Terminal output of harvey failover vm lhv2-db-1: lhv2-web-1 added because it is in recovery group lhv2-stack; stop web then db, final sync of four volumes, start db then web; total RTO 266 seconds, RPO 0 for both VMs](group-failover.svg)
+![Terminal output of harvey failover group lhv2-stack: stop web then db, final sync of four volumes, promote, start db then web on the DR cluster; total RTO 249 seconds, RPO 0 for both VMs](group-failover.svg)
 
 ```console
 ## lhv2-db-1
 machine-id 27eb794b02df41ffb1f1cac986c85476
 enp2s0           UP             192.168.227.12/24 fe80::5054:ff:fe27:112/64 
    gap: 2026-11-10T03:34:49Z -> 2026-11-10T03:38:54Z (245s)
-   last: 2026-11-10T03:45:21Z
+   gap: 2026-11-10T04:08:56Z -> 2026-11-10T04:12:15Z (199s)
+   gap: 2026-11-10T04:17:06Z -> 2026-11-10T04:20:54Z (228s)
    gap: 2026-11-10T03:34:49Z -> 2026-11-10T03:38:54Z (245s)
-   last: 2026-11-10T03:45:26Z
-marker service: active
+   gap: 2026-11-10T04:08:56Z -> 2026-11-10T04:12:15Z (199s)
+   gap: 2026-11-10T04:17:06Z -> 2026-11-10T04:20:54Z (228s)
 ## lhv2-web-1
 machine-id 97c5ad1c9e83498baa435735fdd2dd97
 enp2s0           UP             192.168.227.13/24 fe80::5054:ff:fe27:113/64 
    gap: 2026-11-10T03:34:38Z -> 2026-11-10T03:39:12Z (274s)
-   last: 2026-11-10T03:45:30Z
-marker service: active
+   gap: 2026-11-10T04:08:49Z -> 2026-11-10T04:12:32Z (223s)
+   gap: 2026-11-10T04:16:57Z -> 2026-11-10T04:21:11Z (254s)
 ## web -> db over storage-vlan
-3 packets transmitted, 3 received, 0% packet loss, time 2062ms
-rtt min/avg/max/mdev = 0.531/0.852/1.323/0.339 ms
+3 packets transmitted, 3 received, 0% packet loss, time 2041ms
+rtt min/avg/max/mdev = 0.724/0.860/1.067/0.148 ms
 ```
 
-Both VMs kept their static IPs on the copied VLAN network, and the web VM reaches the database on the DR site.
+Across three moves of the group (failover, failback, failover again), every disk shows only the outage gaps. Both VMs kept their static IPs on the copied VLAN network, and the web VM reaches the database on the DR site.
+
+> [!IMPORTANT] Name the group, not a member
+> If a command names only one VM of a recovery group, `harvey` refuses, even with `--yes`, and prints the group's members and the command to run. A typo or a script can't move a whole group by accident:
+>
+> ![Terminal output of harvey failover vm lhv2-db-1 -y refusing: lhv2-db-1 is in recovery group lhv2-stack with lhv2-web-1 and the standalone PVC lhv2-archive; name the group explicitly with harvey failover group lhv2-stack](group-guard.svg)
 
 ## Watch for faulted V2 DR volumes on Longhorn 1.13.0
 
