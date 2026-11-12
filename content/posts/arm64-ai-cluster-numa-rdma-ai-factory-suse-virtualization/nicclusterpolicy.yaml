@@ -1,0 +1,31 @@
+# NicClusterPolicy for an RKE2 (multus,canal) cluster of SLES 15 SP7 VMs with BlueField-2 PFs passed through.
+# BlueField-2 in DPU mode; rails named by phys_port_name: rail0 = BF2 port 0 (p0), rail1 = port 1 (p1).
+# Multus comes from RKE2 (rke2-multus) -> not deployed here. ofedDriver added in a separate step.
+apiVersion: mellanox.com/v1alpha1
+kind: NicClusterPolicy
+metadata:
+  name: nic-cluster-policy
+spec:
+  rdmaSharedDevicePlugin:
+    image: k8s-rdma-shared-dev-plugin
+    repository: nvcr.io/nvidia/mellanox
+    version: network-operator-v26.7.1
+    config: |
+      {
+        "configList": [
+          {"resourceName": "rdma_rail0", "rdmaHcaMax": 63,
+           "selectors": {"vendors": ["15b3"], "deviceIDs": ["a2d6"], "ifNames": ["rail0"]}},
+          {"resourceName": "rdma_rail1", "rdmaHcaMax": 63,
+           "selectors": {"vendors": ["15b3"], "deviceIDs": ["a2d6"], "ifNames": ["rail1"]}}
+        ]
+      }
+  secondaryNetwork:
+    cniPlugins:
+      image: plugins
+      repository: nvcr.io/nvidia/mellanox
+      version: network-operator-v26.7.1
+  nvIpam:
+    image: nvidia-k8s-ipam
+    repository: nvcr.io/nvidia/mellanox
+    version: network-operator-v26.7.1
+    enableWebhook: false

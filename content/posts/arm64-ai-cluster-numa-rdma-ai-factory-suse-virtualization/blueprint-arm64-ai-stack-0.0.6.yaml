@@ -1,0 +1,619 @@
+apiVersion: ai-factory.suse.com/v1alpha1
+kind: Blueprint
+metadata:
+  name: arm64-ai-stack-0-0-6
+spec:
+  components:
+    - chartName: gpu-operator
+      chartRepo: nvidia
+      chartVersion: v26.7.2
+      values:
+        ccManager:
+          defaultMode: "on"
+          enabled: true
+          hostNetwork: false
+          image: k8s-cc-manager
+          imagePullPolicy: IfNotPresent
+          imagePullSecrets: []
+          repository: nvcr.io/nvidia/cloud-native
+          resources: {}
+          version: v0.4.4
+        cdi:
+          enabled: true
+          nriPluginEnabled: false
+        clusterPolicy:
+          deployCR: true
+        daemonsets:
+          annotations: {}
+          labels: {}
+          priorityClassName: system-node-critical
+          rollingUpdate:
+            maxUnavailable: "1"
+          tolerations:
+            - effect: NoSchedule
+              key: nvidia.com/gpu
+              operator: Exists
+          updateStrategy: RollingUpdate
+        dcgm:
+          args: []
+          enabled: false
+          env: []
+          hostNetwork: false
+          image: dcgm
+          imagePullPolicy: IfNotPresent
+          repository: nvcr.io/nvidia/cloud-native
+          resources: {}
+          version: 4.6.1-1-ubuntu24.04
+        dcgmExporter:
+          annotations: {}
+          enablePodLabels: false
+          enablePodUID: false
+          enabled: true
+          env: []
+          hostNetwork: false
+          hostPID: false
+          image: dcgm-exporter
+          imagePullPolicy: IfNotPresent
+          repository: nvcr.io/nvidia/k8s
+          resources: {}
+          service:
+            internalTrafficPolicy: Cluster
+          serviceMonitor:
+            additionalLabels: {}
+            enabled: true
+            honorLabels: false
+            interval: 15s
+            relabelings: []
+            scrapeTimeout: 10s
+          version: 4.6.1-4.8.4-distroless
+        devicePlugin:
+          args: []
+          config:
+            create: false
+            data: {}
+            default: ""
+            name: ""
+          enabled: true
+          env: []
+          hostNetwork: false
+          image: k8s-device-plugin
+          imagePullPolicy: IfNotPresent
+          imagePullSecrets: []
+          mps:
+            root: /run/nvidia/mps
+          repository: nvcr.io/nvidia
+          resources: {}
+          version: v0.20.1
+        draDriver:
+          computeDomains:
+            controller: {}
+            enabled: true
+            kubeletPlugin: {}
+          featureGates: {}
+          gpus:
+            kubeletPlugin: {}
+          image: dra-driver-nvidia-gpu
+          imagePullPolicy: IfNotPresent
+          imagePullSecrets: []
+          repository: nvcr.io/nvidia
+          version: v0.5.1
+        driver:
+          certConfig:
+            name: ""
+          enabled: true
+          env: []
+          hostNetwork: false
+          image: driver
+          imagePullPolicy: IfNotPresent
+          imagePullSecrets: []
+          kernelModuleConfig:
+            name: ""
+          kernelModuleType: auto
+          licensingConfig:
+            nlsEnabled: true
+            secretName: ""
+          manager:
+            env: []
+            image: k8s-driver-manager
+            imagePullPolicy: IfNotPresent
+            repository: nvcr.io/nvidia/cloud-native
+            version: v0.12.1
+          nvidiaDriverCRD:
+            deployDefaultCR: true
+            driverType: gpu
+            enabled: false
+            nodeSelector: {}
+          rdma:
+            enabled: false
+            useHostMofed: false
+          repoConfig:
+            configMapName: ""
+          repository: registry.suse.com/third-party/nvidia
+          resources: {}
+          secretEnv: ""
+          startupProbe:
+            failureThreshold: 120
+            initialDelaySeconds: 60
+            periodSeconds: 10
+            timeoutSeconds: 60
+          upgradePolicy:
+            autoUpgrade: true
+            drain:
+              deleteEmptyDir: false
+              enable: false
+              force: false
+              podSelector: ""
+              timeoutSeconds: 300
+            gpuPodDeletion:
+              deleteEmptyDir: false
+              force: false
+              timeoutSeconds: 300
+            maxParallelUpgrades: 1
+            maxUnavailable: 25%
+            waitForCompletion:
+              podSelector: ""
+              timeoutSeconds: 0
+          usePrecompiled: true
+          version: "595"
+          virtualTopology:
+            config: ""
+        extraObjects: []
+        gdrcopy:
+          args: []
+          enabled: false
+          env: []
+          image: gdrdrv
+          imagePullPolicy: IfNotPresent
+          imagePullSecrets: []
+          repository: nvcr.io/nvidia/cloud-native
+          version: v2.6
+        gds:
+          args: []
+          enabled: false
+          env: []
+          image: nvidia-fs
+          imagePullPolicy: IfNotPresent
+          imagePullSecrets: []
+          repository: nvcr.io/nvidia/cloud-native
+          version: 2.29.4
+        gfd:
+          enabled: true
+          env: []
+          hostNetwork: false
+          image: k8s-device-plugin
+          imagePullPolicy: IfNotPresent
+          imagePullSecrets: []
+          repository: nvcr.io/nvidia
+          resources: {}
+          version: v0.20.1
+        gpuCluster:
+          deployCR: false
+        hostPaths:
+          driverInstallDir: /run/nvidia/driver
+          rootFS: /
+        kataManager:
+          config: {}
+          enabled: false
+          env: []
+          hostNetwork: false
+          imagePullPolicy: IfNotPresent
+          imagePullSecrets: []
+          resources: {}
+        kataSandboxDevicePlugin:
+          args: []
+          enabled: true
+          env: []
+          hostNetwork: false
+          image: nvidia-sandbox-device-plugin
+          imagePullPolicy: IfNotPresent
+          imagePullSecrets: []
+          repository: nvcr.io/nvidia/cloud-native
+          resources: {}
+          version: v0.0.5
+        mig:
+          strategy: single
+        migManager:
+          config:
+            create: false
+            data: {}
+            default: all-disabled
+            name: ""
+          enabled: true
+          env: []
+          gpuClientsConfig:
+            name: ""
+          hostNetwork: false
+          image: k8s-mig-manager
+          imagePullPolicy: IfNotPresent
+          imagePullSecrets: []
+          repository: nvcr.io/nvidia/cloud-native
+          resources: {}
+          version: v0.15.1
+        nfd:
+          enabled: true
+          nodefeaturerules: false
+        node-feature-discovery:
+          gc:
+            enable: true
+            replicaCount: 1
+            serviceAccount:
+              create: false
+              name: node-feature-discovery
+          master:
+            config:
+              extraLabelNs:
+                - nvidia.com
+            serviceAccount:
+              create: true
+              name: node-feature-discovery
+          priorityClassName: system-node-critical
+          worker:
+            config:
+              sources:
+                pci:
+                  deviceClassWhitelist:
+                    - "02"
+                    - "0200"
+                    - "0207"
+                    - "0300"
+                    - "0302"
+                  deviceLabelFields:
+                    - vendor
+            serviceAccount:
+              create: false
+              name: node-feature-discovery
+            tolerations:
+              - effect: NoSchedule
+                key: node-role.kubernetes.io/control-plane
+                operator: Equal
+                value: ""
+              - effect: NoSchedule
+                key: nvidia.com/gpu
+                operator: Exists
+        nodeStatusExporter:
+          enabled: false
+          hostNetwork: false
+          image: gpu-operator
+          imagePullPolicy: IfNotPresent
+          imagePullSecrets: []
+          repository: nvcr.io/nvidia
+          resources: {}
+        operator:
+          affinity:
+            nodeAffinity:
+              preferredDuringSchedulingIgnoredDuringExecution:
+                - preference:
+                    matchExpressions:
+                      - key: node-role.kubernetes.io/control-plane
+                        operator: In
+                        values:
+                          - ""
+                  weight: 1
+          annotations:
+            openshift.io/scc: restricted-readonly
+          cleanupCRD: false
+          env: []
+          image: gpu-operator
+          imagePullPolicy: IfNotPresent
+          imagePullSecrets: []
+          logging:
+            develMode: false
+            level: info
+            timeEncoding: epoch
+          nodeSelector:
+            kubernetes.io/os: linux
+          priorityClassName: system-node-critical
+          repository: nvcr.io/nvidia
+          resources:
+            limits:
+              cpu: 500m
+              memory: 350Mi
+            requests:
+              cpu: 200m
+              memory: 100Mi
+          runtimeClass: nvidia
+          tolerations:
+            - effect: NoSchedule
+              key: node-role.kubernetes.io/control-plane
+              operator: Equal
+              value: ""
+          upgradeCRD: true
+          use_ocp_driver_toolkit: false
+        platform:
+          openshift: false
+        psa:
+          enabled: false
+        sandboxDevicePlugin:
+          args: []
+          enabled: true
+          env: []
+          hostNetwork: false
+          image: kubevirt-gpu-device-plugin
+          imagePullPolicy: IfNotPresent
+          imagePullSecrets: []
+          repository: nvcr.io/nvidia
+          resources: {}
+          version: v1.6.0
+        sandboxWorkloads:
+          defaultWorkload: container
+          enabled: false
+          mode: kubevirt
+        toolkit:
+          enabled: true
+          env:
+            - name: CONTAINERD_SOCKET
+              value: /run/k3s/containerd/containerd.sock
+        validator:
+          args: []
+          env: []
+          hostNetwork: false
+          image: gpu-operator
+          imagePullPolicy: IfNotPresent
+          imagePullSecrets: []
+          plugin:
+            env: []
+          repository: nvcr.io/nvidia
+          resources: {}
+        vfioManager:
+          driverManager:
+            env: []
+            image: k8s-driver-manager
+            imagePullPolicy: IfNotPresent
+            repository: nvcr.io/nvidia/cloud-native
+            version: v0.12.1
+          enabled: true
+          env: []
+          hostNetwork: false
+          image: k8s-driver-manager
+          imagePullPolicy: IfNotPresent
+          imagePullSecrets: []
+          repository: nvcr.io/nvidia/cloud-native
+          resources: {}
+          version: v0.12.1
+        vgpuDeviceManager:
+          config:
+            default: default
+            name: ""
+          enabled: true
+          env: []
+          hostNetwork: false
+          image: vgpu-device-manager
+          imagePullPolicy: IfNotPresent
+          imagePullSecrets: []
+          repository: nvcr.io/nvidia/cloud-native
+          version: v0.5.1
+        vgpuManager:
+          driverManager:
+            env: []
+            image: k8s-driver-manager
+            imagePullPolicy: IfNotPresent
+            repository: nvcr.io/nvidia/cloud-native
+            version: v0.12.1
+          enabled: false
+          env: []
+          hostNetwork: false
+          image: vgpu-manager
+          imagePullPolicy: IfNotPresent
+          imagePullSecrets: []
+          kernelModuleConfig:
+            name: ""
+          repository: ""
+          resources: {}
+          version: ""
+      vendor: nvidia
+    - chartName: network-operator
+      chartRepo: nvidia
+      chartVersion: 26.7.1
+      values:
+        imagePullSecrets: []
+        keepNCP: true
+        maintenance-operator-chart:
+          operator:
+            admissionController:
+              certificates:
+                certManager:
+                  enable: false
+                  generateSelfSigned: false
+                custom:
+                  enable: false
+                secretNames:
+                  operator: maintenance-webhook-cert
+              enable: false
+            image:
+              name: maintenance-operator
+              repository: nvcr.io/nvidia/mellanox
+              tag: network-operator-v26.7.1
+          operatorConfig:
+            deploy: false
+        maintenanceOperator:
+          enabled: false
+        nfd:
+          deployNodeFeatureRules: true
+          enabled: false
+        node-feature-discovery:
+          enableNodeFeatureApi: true
+          featureGates:
+            NodeFeatureAPI: true
+          gc:
+            enable: true
+            replicaCount: 1
+            serviceAccount:
+              create: false
+              name: node-feature-discovery
+          image:
+            pullPolicy: IfNotPresent
+            repository: nvcr.io/nvidia/mellanox/node-feature-discovery
+            tag: network-operator-v26.7.1
+          master:
+            config:
+              extraLabelNs:
+                - nvidia.com
+            serviceAccount:
+              create: true
+              name: node-feature-discovery
+          postDeleteCleanup: false
+          worker:
+            config:
+              sources:
+                pci:
+                  deviceClassWhitelist:
+                    - "0300"
+                    - "0302"
+                  deviceLabelFields:
+                    - vendor
+            serviceAccount:
+              create: false
+              name: node-feature-discovery
+            tolerations:
+              - effect: NoSchedule
+                key: node-role.kubernetes.io/master
+                operator: Exists
+              - effect: NoSchedule
+                key: node-role.kubernetes.io/control-plane
+                operator: Exists
+              - effect: NoSchedule
+                key: nvidia.com/gpu
+                operator: Exists
+        operator:
+          admissionController:
+            enabled: false
+            useCertManager: true
+          affinity:
+            nodeAffinity:
+              preferredDuringSchedulingIgnoredDuringExecution:
+                - preference:
+                    matchExpressions:
+                      - key: node-role.kubernetes.io/master
+                        operator: In
+                        values:
+                          - ""
+                  weight: 1
+                - preference:
+                    matchExpressions:
+                      - key: node-role.kubernetes.io/control-plane
+                        operator: In
+                        values:
+                          - ""
+                  weight: 1
+          cniBinDirectory: /opt/cni/bin
+          cniNetworkDirectory: /etc/cni/net.d
+          coverage:
+            enabled: false
+          fullnameOverride: ""
+          image: network-operator
+          maintenanceOperator:
+            drainControllerRequestorID: nvidia.network-operator-drain-controller
+            nodeMaintenanceNamePrefix: network-operator
+            nodeMaintenanceNamespace: default
+            requestorID: nvidia.doca-driver-upgrade
+            useDrainControllerRequestor: false
+            useRequestor: false
+          nameOverride: ""
+          nodeSelector: {}
+          ofedDriver:
+            initContainer:
+              enable: true
+              image: network-operator-init-container
+              repository: nvcr.io/nvidia/mellanox
+              version: network-operator-v26.7.1
+          preStopSleepSeconds: 25
+          priorityClassName: system-node-critical
+          repository: nvcr.io/nvidia/cloud-native
+          resources:
+            limits:
+              cpu: 500m
+              memory: 128Mi
+            requests:
+              cpu: 5m
+              memory: 64Mi
+          terminationGracePeriodSeconds: 30
+          tolerations:
+            - effect: NoSchedule
+              key: node-role.kubernetes.io/master
+              operator: Equal
+              value: ""
+            - effect: NoSchedule
+              key: node-role.kubernetes.io/control-plane
+              operator: Equal
+              value: ""
+          useDTK: true
+          imagePullSecrets:
+            - ngc-secret
+        sriov-network-operator:
+          images:
+            ibSriovCni: nvcr.io/nvidia/mellanox/ib-sriov-cni:network-operator-v26.7.1
+            operator: nvcr.io/nvidia/mellanox/sriov-network-operator:network-operator-v26.7.1
+            ovsCni: nvcr.io/nvidia/mellanox/ovs-cni-plugin:network-operator-v26.7.1
+            rdmaCni: nvcr.io/nvidia/mellanox/rdma-cni:network-operator-v26.7.1
+            resourcesInjector: ghcr.io/k8snetworkplumbingwg/network-resources-injector:v1.7.0
+            sriovCni: nvcr.io/nvidia/mellanox/sriov-cni:network-operator-v26.7.1
+            sriovConfigDaemon: nvcr.io/nvidia/mellanox/sriov-network-operator-config-daemon:network-operator-v26.7.1
+            sriovDevicePlugin: nvcr.io/nvidia/mellanox/sriov-network-device-plugin:network-operator-v26.7.1
+            sriovDraDriver: nvcr.io/nvidia/mellanox/dra-driver-sriov:network-operator-v26.7.1
+            webhook: nvcr.io/nvidia/mellanox/sriov-network-operator-webhook:network-operator-v26.7.1
+          operator:
+            admissionControllers:
+              certificates:
+                certManager:
+                  enabled: true
+                  generateSelfSigned: true
+                custom:
+                  enabled: false
+                secretNames:
+                  injector: network-resources-injector-cert
+                  operator: operator-webhook-cert
+              enabled: false
+            resourcePrefix: nvidia.com
+          sriovOperatorConfig:
+            configDaemonNodeSelector:
+              beta.kubernetes.io/os: linux
+              network.nvidia.com/operator.mofed.wait: "false"
+            deploy: true
+        sriovNetworkOperator:
+          enabled: false
+        test:
+          pf: ens2f0
+        upgradeCRDs: true
+      vendor: nvidia
+    - chartName: vllm
+      chartRepo: application-collection
+      chartVersion: 0.1.10
+      values:
+        servingEngineSpec:
+          enableEngine: true
+          modelSpec:
+            - limitMemory: 20Gi
+              modelURL: Qwen/Qwen2.5-3B-Instruct
+              name: qwen2-5-3b-instruct
+              pvcStorage: 20Gi
+              replicaCount: 1
+              repository: vllm/vllm-openai
+              requestCPU: 4
+              requestGPU: 1
+              requestMemory: 16Gi
+              tag: latest
+              vllmConfig:
+                dtype: bfloat16
+                extraArgs:
+                  - --enable-auto-tool-choice
+                  - --tool-call-parser
+                  - hermes
+                gpuMemoryUtilization: 0.85
+                maxModelLen: 8192
+      vendor: suse
+    - chartName: open-webui
+      chartRepo: application-collection
+      chartVersion: 18.0.0
+      values:
+        enableOpenaiApi: true
+        extraEnvFrom:
+          - secretRef:
+              name: open-webui-admin-credentials
+        openaiBaseApiUrl: http://vllm-router-service.arm64-ai-stack.svc.cluster.local/v1
+        service:
+          type: NodePort
+      vendor: suse
+  description: Local Inference using Open-WebUI
+  displayName: arm64 AI Stack
+  source: Custom
+  version: 0.0.6

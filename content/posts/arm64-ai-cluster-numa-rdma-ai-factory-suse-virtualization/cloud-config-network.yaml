@@ -1,0 +1,10 @@
+# Static eth0 for lab VLAN 1 (never plain DHCP on vlan1). Edit the address per VM.
+# The SLES sysconfig renderer drops the route below; the user template also writes it for wicked.
+# DNS 8.8.8.8/1.1.1.1: Route 53 serves the lab's internal records; the home router's DNS had stale entries.
+version: 2
+ethernets:
+  eth0:
+    match: {name: eth0}
+    addresses: [192.0.2.XX/24]
+    routes: [{to: 0.0.0.0/0, via: 192.0.2.1}]
+    nameservers: {addresses: [8.8.8.8, 1.1.1.1], search: [example.com]}

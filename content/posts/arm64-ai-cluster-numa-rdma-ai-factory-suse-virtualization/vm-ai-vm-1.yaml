@@ -1,0 +1,39 @@
+apiVersion: kubevirt.io/v1
+kind: VirtualMachine
+metadata:
+  name: ai-vm-1
+  namespace: default
+  labels: {harvesterhci.io/creator: harvester, app: ai-vm}
+  annotations:
+    harvesterhci.io/volumeClaimTemplates: '[{"metadata":{"name":"ai-vm-1-root","annotations":{"harvesterhci.io/imageId":"default/sles-15-sp7-qu5-aarch64"}},"spec":{"accessModes":["ReadWriteMany"],"resources":{"requests":{"storage":"120Gi"}},"volumeMode":"Block","storageClassName":"<longhorn-image-storageclass>"}}]'
+spec:
+  runStrategy: RerunOnFailure
+  template:
+    metadata:
+      labels: {harvesterhci.io/vmName: ai-vm-1}
+    spec:
+      architecture: arm64
+      nodeSelector: {kubernetes.io/hostname: host-1}
+      domain:
+        cpu: {cores: 16, sockets: 1, threads: 1, dedicatedCpuPlacement: true}
+        firmware: {bootloader: {efi: {secureBoot: false}}}
+        machine: {type: virt}
+        memory: {guest: 32Gi}
+        resources: {limits: {cpu: "16", memory: 32Gi}}
+        devices:
+          disks:
+            - {name: root, bootOrder: 1, disk: {bus: virtio}}
+            - {name: cloudinit, disk: {bus: virtio}}
+          interfaces:
+            - {name: lan, bridge: {}, model: virtio, macAddress: "02:00:00:00:00:01"}
+          hostDevices:
+            - {name: host-1-000001000, deviceName: nvidia.com/GA107GL_A2___A16}
+            - {name: host-1-000101000, deviceName: mellanox.com/a2d6}
+            - {name: host-1-000101001, deviceName: mellanox.com/a2d6}
+            - {name: host-1-000101002, deviceName: mellanox.com/c2d1}
+            - {name: host-1-000101003, deviceName: mellanox.com/MT42822_BLUEFIELD2_SOC_MANAGEMENT_INTERFACE}
+      networks:
+        - {name: lan, multus: {networkName: default/vlan1}}
+      volumes:
+        - {name: root, persistentVolumeClaim: {claimName: ai-vm-1-root}}
+        - {name: cloudinit, cloudInitNoCloud: {secretRef: {name: ai-vm-1-cloudinit}, networkDataSecretRef: {name: ai-vm-1-cloudinit}}}

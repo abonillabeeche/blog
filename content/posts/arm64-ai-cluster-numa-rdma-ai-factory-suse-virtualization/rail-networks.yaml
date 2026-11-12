@@ -1,0 +1,36 @@
+# Flat L2 on CRS510 bridge-roce. Hosts own .11-.13; pods get per-node blocks from .100 up.
+apiVersion: nv-ipam.nvidia.com/v1alpha1
+kind: IPPool
+metadata: {name: rail0, namespace: arm64-ai-stack}
+spec:
+  subnet: 198.51.100.0/24
+  perNodeBlockSize: 32
+  exclusions: [{startIP: 198.51.100.1, endIP: 198.51.100.99}]
+---
+apiVersion: nv-ipam.nvidia.com/v1alpha1
+kind: IPPool
+metadata: {name: rail1, namespace: arm64-ai-stack}
+spec:
+  subnet: 203.0.113.0/24
+  perNodeBlockSize: 32
+  exclusions: [{startIP: 203.0.113.1, endIP: 203.0.113.99}]
+---
+apiVersion: mellanox.com/v1alpha1
+kind: MacvlanNetwork
+metadata: {name: rail0}
+spec:
+  networkNamespace: arm64-ai-stack
+  master: rail0
+  mode: bridge
+  mtu: 9000
+  ipam: '{"type": "nv-ipam", "poolName": "rail0"}'
+---
+apiVersion: mellanox.com/v1alpha1
+kind: MacvlanNetwork
+metadata: {name: rail1}
+spec:
+  networkNamespace: arm64-ai-stack
+  master: rail1
+  mode: bridge
+  mtu: 9000
+  ipam: '{"type": "nv-ipam", "poolName": "rail1"}'

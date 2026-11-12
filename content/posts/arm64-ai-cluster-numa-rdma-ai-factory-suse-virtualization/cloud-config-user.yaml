@@ -1,0 +1,98 @@
+#cloud-config
+# SLES 15 SP7 Minimal (Cloud) -> ready-to-join RKE2 node with BlueField-2 RDMA rails. Node-generic:
+# hostname = VM name (KubeVirt meta-data), rails named by BF2 phys_port_name, rail IPs derived from eth0.
+# Pair with network template "sles15-static-lan" (edit the IP). Lessons baked in (2026-11-11):
+#  - Minimal image ships kernel-default-base: no mlx5/RDMA. Swap to kernel-default (+ -devel for driver
+#    containers) and reboot. BF2 netdevs only exist after that, so rails are set up with udev + ifcfg here,
+#    NOT in network data (a missing NIC makes cloud-init drop ALL network config).
+#  - cloud-init's SLES sysconfig renderer drops the v2 default route -> /etc/sysconfig/network/routes.
+#  - DNS 8.8.8.8/1.1.1.1: Route 53 serves the lab's internal records; the home router's DNS had stale entries.
+#  - runcmd can start before wicked has eth0 up: bootstrap waits for SCC before SUSEConnect.
+#  - RoCE host QoS = trust DSCP, NO PFC (PFC on BF2 kills the uplink).
+#  - Rail IPs: 198.51.100.<eth0 last octet> / 203.0.113.<octet> (nv-ipam pools keep .1-.99 for hosts).
+#  - Optional Rancher auto-join: paste the registration command into /root/.rancher-register below.
+users:
+  - name: labadmin
+    groups: [wheel]
+    sudo: "ALL=(ALL) NOPASSWD:ALL"
+    shell: /bin/bash
+    ssh_authorized_keys: ["<your SSH public key>"]
+write_files:
+  - path: /etc/sysconfig/network/routes
+    content: |
+      default 192.0.2.1 - -
+  - path: /etc/udev/rules.d/70-bf2-rails.rules
+    content: |
+      # BF2 host PFs by physical port: rail0 = p0, rail1 = p1 (stable across PCI order / VMs)
+      SUBSYSTEM=="net", ACTION=="add", DRIVERS=="mlx5_core", ATTR{phys_port_name}=="p0", NAME="rail0"
+      SUBSYSTEM=="net", ACTION=="add", DRIVERS=="mlx5_core", ATTR{phys_port_name}=="p1", NAME="rail1"
+  - path: /etc/udev/rules.d/90-roce-host-qos.rules
+    content: |
+      SUBSYSTEM=="net", ACTION=="add", DRIVERS=="mlx5_core", ATTR{phys_port_name}=="p0", RUN+="/usr/local/sbin/roce-host-qos rail0"
+      SUBSYSTEM=="net", ACTION=="add", DRIVERS=="mlx5_core", ATTR{phys_port_name}=="p1", RUN+="/usr/local/sbin/roce-host-qos rail1"
+  - path: /usr/local/sbin/roce-host-qos
+    permissions: "0755"
+    content: |
+      #!/bin/bash
+      # MTU 9000 + trust DSCP (DSCP>>3 -> prio) on a BF2 rail. No PFC, on purpose.
+      dev="$1"
+      for i in $(seq 1 20); do [ -e "/sys/class/net/$dev" ] && break; sleep 0.5; done
+      [ -e "/sys/class/net/$dev" ] || exit 0
+      ip link set "$dev" mtu 9000
+      map=""; for d in $(seq 0 63); do map="$map $d:$((d>>3))"; done
+      /usr/sbin/dcb app add dev "$dev" dscp-prio $map 2>/dev/null || true
+      logger -t roce-host-qos "$dev: mtu 9000, trust dscp, pfc off"
+  - path: /etc/sysctl.d/90-roce.conf
+    content: |
+      net.ipv4.conf.all.arp_ignore=1
+  - path: /root/.regcode
+    permissions: "0600"
+    content: "xxxxxxxxxxxxxxxxxxxxxxxxxxx"
+  - path: /root/.rancher-register
+    permissions: "0600"
+    content: ""
+  - path: /etc/systemd/system/rancher-register.service
+    content: |
+      [Unit]
+      Description=Join the Rancher custom cluster once (after bootstrap reboot)
+      Wants=network-online.target
+      After=network-online.target
+      ConditionFileNotEmpty=/root/.rancher-register
+      ConditionPathExists=!/etc/systemd/system/rancher-system-agent.service
+      [Service]
+      Type=oneshot
+      ExecStartPre=/bin/sh -c 'until curl -s -o /dev/null --max-time 5 https://scc.suse.com; do sleep 5; done; sleep 30'
+      ExecStart=/bin/sh /root/.rancher-register
+      ExecStartPost=/bin/rm -f /root/.rancher-register
+      [Install]
+      WantedBy=multi-user.target
+  - path: /usr/local/sbin/vm-bootstrap
+    permissions: "0700"
+    content: |
+      #!/bin/bash
+      set -euo pipefail
+      exec >>/var/log/vm-bootstrap.log 2>&1
+      echo "=== bootstrap start $(date -Is)"
+      # FQDN from the VM name
+      h=$(hostname -s); hostnamectl set-hostname "$h.example.com"
+      # Rail IPs from eth0's last octet
+      oct=$(ip -4 -o addr show eth0 | awk '{print $4}' | cut -d/ -f1 | cut -d. -f4)
+      nets=(198.51.100 203.0.113)   # rail0, rail1 subnets
+      for r in 0 1; do
+        printf 'STARTMODE=auto\nBOOTPROTO=static\nIPADDR=%s.%s/24\nMTU=9000\n' "${nets[$r]}" "$oct" > /etc/sysconfig/network/ifcfg-rail$r
+      done
+      for i in $(seq 1 60); do curl -s -o /dev/null --max-time 5 https://scc.suse.com && break; sleep 5; done
+      SUSEConnect -r "$(cat /root/.regcode)"
+      SUSEConnect -p PackageHub/15.7/aarch64
+      rm -f /root/.regcode
+      zypper -n --gpg-auto-import-keys ref
+      zypper -n in kernel-default kernel-default-devel -kernel-default-base
+      zypper -n in iptables rdma-core libibverbs-utils ethtool iproute2 iputils tcpdump numactl \
+                   pciutils curl jq rshim
+      systemctl enable rshim
+      systemctl enable rancher-register.service
+      touch /var/lib/vm-bootstrap.done
+      echo "=== bootstrap done $(date -Is), rebooting into kernel-default"
+      systemctl reboot
+runcmd:
+  - [/usr/local/sbin/vm-bootstrap]

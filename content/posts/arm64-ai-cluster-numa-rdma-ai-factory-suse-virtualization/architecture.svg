@@ -1,0 +1,117 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 1036" font-family="Helvetica, Arial, sans-serif">
+  <defs>
+    <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#475569"/>
+    </marker>
+    <style>
+      .t{font-size:15px;fill:#0f172a}
+      .s{font-size:12.5px;fill:#334155}
+      .h{font-size:17px;font-weight:700;fill:#0f172a}
+      .lab{font-size:13px;font-weight:700;fill:#ffffff}
+      .w{font-size:12px;fill:#ffffff}
+    </style>
+  </defs>
+  <rect width="1400" height="1036" fill="#ffffff"/>
+
+  <!-- Management layer -->
+  <rect x="20" y="18" width="1360" height="118" rx="12" fill="#ecfdf5" stroke="#30ba78" stroke-width="2"/>
+  <text x="38" y="44" class="h">Management: Rancher + SUSE AI Factory</text>
+  <rect x="38" y="58" width="300" height="64" rx="8" fill="#30ba78"/>
+  <text x="54" y="82" class="lab">Blueprint arm64-ai-stack 0.0.6</text>
+  <text x="54" y="102" class="w">gpu-operator · network-operator · vllm · open-webui</text>
+  <rect x="378" y="58" width="270" height="64" rx="8" fill="#30ba78"/>
+  <text x="394" y="82" class="lab">AIWorkload (template applied)</text>
+  <text x="394" y="102" class="w">pull secrets + Helm values per component</text>
+  <rect x="688" y="58" width="250" height="64" rx="8" fill="#30ba78"/>
+  <text x="704" y="82" class="lab">Fleet bundles / HelmOps</text>
+  <text x="704" y="102" class="w">one bundle per component</text>
+  <rect x="978" y="58" width="384" height="64" rx="8" fill="#0c322c"/>
+  <text x="994" y="82" class="lab">Rancher custom cluster (RKE2 v1.36)</text>
+  <text x="994" y="102" class="w">CNI: multus,canal · 3 nodes · etcd + control plane + worker</text>
+  <line x1="338" y1="90" x2="374" y2="90" stroke="#475569" stroke-width="2" marker-end="url(#ar)"/>
+  <line x1="648" y1="90" x2="684" y2="90" stroke="#475569" stroke-width="2" marker-end="url(#ar)"/>
+  <line x1="938" y1="90" x2="974" y2="90" stroke="#475569" stroke-width="2" marker-end="url(#ar)"/>
+
+  <!-- Guest cluster layer -->
+  <rect x="20" y="152" width="1360" height="176" rx="12" fill="#eff6ff" stroke="#2563eb" stroke-width="2"/>
+  <text x="38" y="178" class="h">RKE2 guest cluster (namespace arm64-ai-stack)</text>
+  <rect x="38" y="192" width="250" height="122" rx="8" fill="#2563eb"/>
+  <text x="54" y="216" class="lab">NVIDIA GPU Operator</text>
+  <text x="54" y="238" class="w">SLES 15 driver container</text>
+  <text x="54" y="256" class="w">device plugin · DCGM exporter</text>
+  <text x="54" y="274" class="w">nvidia.com/gpu = 1 per node</text>
+  <rect x="300" y="192" width="390" height="122" rx="8" fill="#2563eb"/>
+  <text x="316" y="216" class="lab">NVIDIA Network Operator + NicClusterPolicy</text>
+  <text x="316" y="238" class="w">RDMA shared device plugin: rdma_rail0 / rdma_rail1</text>
+  <text x="316" y="256" class="w">CNI plugins (macvlan) · nv-ipam (IPPool per rail)</text>
+  <text x="316" y="274" class="w">MacvlanNetwork rail0 / rail1, MTU 9000</text>
+  <text x="316" y="292" class="w">Multus from RKE2 (not from the policy)</text>
+  <rect x="702" y="192" width="300" height="122" rx="8" fill="#2563eb"/>
+  <text x="718" y="216" class="lab">vLLM (production stack)</text>
+  <text x="718" y="238" class="w">router + engine</text>
+  <text x="718" y="256" class="w">Qwen2.5-3B-Instruct on the A2</text>
+  <text x="718" y="274" class="w">PVC on local-path (default SC)</text>
+  <rect x="1014" y="192" width="348" height="122" rx="8" fill="#2563eb"/>
+  <text x="1030" y="216" class="lab">Open WebUI</text>
+  <text x="1030" y="238" class="w">OpenAI API → vllm-router-service</text>
+  <text x="1030" y="256" class="w">admin from Secret (extraEnvFrom)</text>
+  <text x="1030" y="274" class="w">NodePort service</text>
+
+  <!-- VM layer -->
+  <rect x="20" y="344" width="1360" height="236" rx="12" fill="#fff7ed" stroke="#ea580c" stroke-width="2"/>
+  <text x="38" y="370" class="h">Three VMs on SUSE Virtualization (one per host), SLES 15 SP7 + kernel-default</text>
+  <g id="vm">
+    <rect x="38" y="384" width="430" height="182" rx="8" fill="#ffffff" stroke="#ea580c" stroke-width="1.5"/>
+    <text x="54" y="408" class="t" font-weight="700">vm-N · 16 dedicated vCPUs · 32 GiB</text>
+    <text x="54" y="430" class="s">vCPU 0-15 pinned 1:1 to host cores 2-17 (NUMA node 0)</text>
+    <text x="54" y="450" class="s">memory sized to fit node 0 (24 GiB on the smaller host)</text>
+    <text x="54" y="474" class="s" font-weight="700">PCI passthrough (vfio-pci):</text>
+    <text x="54" y="494" class="s">A2 GPU · BF2 PF p0 → rail0 · BF2 PF p1 → rail1</text>
+    <text x="54" y="514" class="s">BF2 comm channel + SoC mgmt → rshim/tmfifo to DPU ARM</text>
+    <text x="54" y="538" class="s">eth0: bridge on mgmt VLAN (static IP, DNS 8.8.8.8)</text>
+    <text x="54" y="556" class="s">rails: MTU 9000 · trust DSCP · PFC off</text>
+  </g>
+  <use href="#vm" x="447"/>
+  <use href="#vm" x="894"/>
+
+  <!-- Host layer -->
+  <rect x="20" y="596" width="1360" height="296" rx="12" fill="#f8fafc" stroke="#64748b" stroke-width="2"/>
+    <g id="host" transform="translate(0,-26)">
+    <rect x="38" y="636" width="430" height="216" rx="8" fill="#ffffff" stroke="#64748b" stroke-width="1.5"/>
+    <rect x="50" y="648" width="250" height="192" rx="6" fill="#dcfce7" stroke="#16a34a"/>
+    <text x="62" y="670" class="t" font-weight="700">NUMA node 0 · cores 0-79</text>
+    <rect x="62" y="682" width="226" height="28" rx="4" fill="#16a34a"/><text x="72" y="701" class="w">VM vCPUs + memory (pinned)</text>
+    <rect x="62" y="716" width="226" height="28" rx="4" fill="#7c3aed"/><text x="72" y="735" class="w">NVIDIA A2 GPU (PCIe)</text>
+    <rect x="62" y="750" width="226" height="80" rx="4" fill="#0f766e"/>
+    <text x="72" y="769" class="w" font-weight="700">BlueField-2 DPU (DPU mode)</text>
+    <text x="72" y="787" class="w">ARM: OVS br-p0/br-p1, hw-offload</text>
+    <text x="72" y="805" class="w">p0/pf0hpf, p1/pf1hpf MTU 9000</text>
+    <text x="72" y="823" class="w">2 × 25GbE ports</text>
+    <rect x="312" y="648" width="144" height="192" rx="6" fill="#f1f5f9" stroke="#94a3b8"/>
+    <text x="322" y="670" class="t" font-weight="700">NUMA node 1</text>
+    <text x="322" y="692" class="s">cores 80-159</text>
+    <text x="322" y="712" class="s">no VM memory</text>
+    <text x="322" y="732" class="s">keep VM memory</text>
+    <text x="322" y="750" class="s">off this node</text>
+  </g>
+  <use href="#host" x="447"/>
+  <use href="#host" x="894"/>
+
+  <!-- passthrough arrows VM -> host -->
+  <line x1="275" y1="566" x2="275" y2="652" stroke="#ea580c" stroke-width="2" stroke-dasharray="6 4" marker-end="url(#ar)"/>
+  <line x1="722" y1="566" x2="722" y2="652" stroke="#ea580c" stroke-width="2" stroke-dasharray="6 4" marker-end="url(#ar)"/>
+  <line x1="1169" y1="566" x2="1169" y2="652" stroke="#ea580c" stroke-width="2" stroke-dasharray="6 4" marker-end="url(#ar)"/>
+
+  <!-- Switch -->
+  <rect x="20" y="912" width="1360" height="106" rx="12" fill="#0f172a"/>
+  <text x="38" y="940" class="lab" font-size="17">RoCEv2 fabric: 25GbE switch, flat L2, MTU 9000</text>
+  <text x="38" y="964" class="w" font-size="13">rail0 = BF2 port 0 on every host · rail1 = BF2 port 1 · trust DSCP (DSCP 26 → TC3, CNP DSCP 48 → TC6)</text>
+  <text x="38" y="986" class="w" font-size="13">no PFC on the NICs (PFC on the BF2 uplink blackholed the fabric) · pod-to-pod RDMA write: 24.51 Gb/s</text>
+  <text x="38" y="1006" class="w" font-size="13">pods attach with k8s.v1.cni.cncf.io/networks: rail0 and request rdma/rdma_rail0</text>
+  <line x1="253" y1="804" x2="253" y2="910" stroke="#0f766e" stroke-width="3"/>
+  <line x1="700" y1="804" x2="700" y2="910" stroke="#0f766e" stroke-width="3"/>
+  <line x1="1147" y1="804" x2="1147" y2="910" stroke="#0f766e" stroke-width="3"/>
+  <!-- host title drawn last, over the switch connectors -->
+  <rect x="30" y="858" width="740" height="28" fill="#f8fafc"/>
+  <text x="38" y="878" class="h">SUSE Virtualization hosts: 3 × Ampere Altra, 2 sockets, 160 cores (CPU manager = static)</text>
+</svg>
